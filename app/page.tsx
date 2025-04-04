@@ -43,6 +43,7 @@ const staggerContainer = {
   },
 }
 
+
 const iconAnimation = {
   hidden: { scale: 0.8, opacity: 0, y: 20 },
   visible: (i) => ({

@@ -1,0 +1,1390 @@
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "project_id": "project-1",
+      "title": "Design Homepage",
+      "description": "Create wireframes and mockups for the homepage",
+      "status": "Completed",
+      "task_group": "Done",
+      "priority": "High",
+      "created_at": "2023-03-01T10:00:00Z",
+      "updated_at": "2023-03-05T14:30:00Z",
+      "project": {
+        "id": "project-1",
+        "title": "E-commerce Website"
+      },
+      "assigned_to_profile": {
+        "id": "user-1",
+        "first_name": "John",
+        "last_name": "Doe",
+        "profile_image": null
+      }
+    },
+    {
+      "id": "task-2",
+      "title": "Implement Product Listing",
+      "description": "Develop the product listing page with filtering and sorting",
+      "status": "In Progress",
+      "priority": "Medium",
+      "task_group": "In Progress",
+      "project": {
+        "id": "project-1",
+        "title": "E-commerce Website"
+      },
+      "assigned_to_profile": {
+        "id": "user-2",
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "profile_image": null
+      },
+      "created_at": "2023-03-02T09:00:00Z",
+      "updated_at": "2023-03-06T11:45:00Z"
+    },
+    {
+      "id": "task-3",
+      "title": "Setup Payment Gateway",
+      "description": "Integrate Stripe payment gateway for checkout process",
+      "status": "Pending",
+      "priority": "High",
+      "task_group": "To Do",
+      "project": {
+        "id": "project-1",
+        "title": "E-commerce Website"
+      },
+      "assigned_to_profile": {
+        "id": "user-3",
+        "first_name": "Mike",
+        "last_name": "Johnson",
+        "profile_image": null
+      },
+      "created_at": "2023-03-03T14:00:00Z",
+      "updated_at": "2023-03-03T14:00:00Z"
+    },
+    {
+      "id": "task-4",
+      "title": "Design Mobile App UI",
+      "description": "Create UI designs for the mobile application",
+      "status": "In Progress",
+      "priority": "Medium",
+      "task_group": "In Progress",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "id": "user-2",
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "profile_image": null
+      },
+      "created_at": "2023-03-04T10:30:00Z",
+      "updated_at": "2023-03-07T09:15:00Z"
+    },
+    {
+      "id": "task-5",
+      "title": "Implement User Authentication",
+      "description": "Develop user login and registration functionality",
+      "status": "Completed",
+      "priority": "High",
+      "task_group": "Done",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "id": "user-1",
+        "first_name": "John",
+        "last_name": "Doe",
+        "profile_image": null
+      },
+      "created_at": "2023-03-05T08:45:00Z",
+      "updated_at": "2023-03-08T16:20:00Z"
+    },
+    {
+      "id": "task-6",
+      "title": "Create API Documentation",
+      "description": "Document all API endpoints for the mobile app",
+      "status": "Pending",
+      "priority": "Low",
+      "task_group": "Backlog",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "id": "user-3",
+        "first_name": "Mike",
+        "last_name": "Johnson",
+        "profile_image": null
+      },
+      "created_at": "2023-03-06T13:15:00Z",
+      "updated_at": "2023-03-06T13:15:00Z"
+    },
+    {
+      "id": "task-7",
+      "project_id": "project-2",
+      "title": "Push Notifications",
+      "description": "Implement push notifications for new messages",
+      "status": "In Progress",
+      "task_group": "In Progress",
+      "priority": "Medium",
+      "created_at": "2023-03-01T14:15:00Z",
+      "updated_at": "2023-03-06T11:20:00Z",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "first_name": "Jordan",
+        "last_name": "Patel",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    },
+    {
+      "id": "task-8",
+      "project_id": "project-2",
+      "title": "Offline Mode",
+      "description": "Add support for offline data synchronization",
+      "status": "Pending",
+      "task_group": "Backlog",
+      "priority": "Low",
+      "created_at": "2023-03-03T16:40:00Z",
+      "updated_at": "2023-03-03T16:40:00Z",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "first_name": "Riley",
+        "last_name": "Garcia",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    },
+    {
+      "id": "task-9",
+      "project_id": "project-2",
+      "title": "App Store Submission",
+      "description": "Prepare app for submission to iOS App Store",
+      "status": "Pending",
+      "task_group": "To Do",
+      "priority": "High",
+      "created_at": "2023-03-06T09:10:00Z",
+      "updated_at": "2023-03-06T09:10:00Z",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "first_name": "Avery",
+        "last_name": "Martinez",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    },
+    {
+      "id": "task-10",
+      "project_id": "project-2",
+      "title": "Google Play Submission",
+      "description": "Prepare app for submission to Google Play Store",
+      "status": "Pending",
+      "task_group": "To Do",
+      "priority": "High",
+      "created_at": "2023-03-06T09:15:00Z",
+      "updated_at": "2023-03-06T09:15:00Z",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "first_name": "Quinn",
+        "last_name": "Taylor",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    },
+    {
+      "id": "task-11",
+      "project_id": "project-2",
+      "title": "Bug Fixes for v1.0",
+      "description": "Address critical bugs before initial release",
+      "status": "In Progress",
+      "task_group": "In Progress",
+      "priority": "High",
+      "created_at": "2023-03-05T13:25:00Z",
+      "updated_at": "2023-03-06T14:10:00Z",
+      "project": {
+        "id": "project-2",
+        "title": "Mobile App"
+      },
+      "assigned_to_profile": {
+        "first_name": "Drew",
+        "last_name": "Robinson",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    },
+    {
+      "id": "task-12",
+      "project_id": "project-1",
+      "title": "Code Review",
+      "description": "Review pull requests for new features",
+      "status": "Pending",
+      "task_group": "Review",
+      "priority": "Medium",
+      "created_at": "2023-03-06T11:30:00Z",
+      "updated_at": "2023-03-06T11:30:00Z",
+      "project": {
+        "id": "project-1",
+        "title": "E-commerce Website"
+      },
+      "assigned_to_profile": {
+        "first_name": "Alex",
+        "last_name": "Johnson",
+        "profile_image": "/placeholder.svg?height=32&width=32"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "project_id": "project-1",
+      "project_title": "E-commerce Website",
+      "description": "A full-featured e-commerce platform with product catalog, shopping cart, and payment processing",
+      "status": "In Progress",
+      "progress_percentage": 42,
+      "total_tasks": 12,
+      "completed_tasks": 5,
+      "created_at": "2023-02-15T09:00:00Z",
+      "updated_at": "2023-03-06T16:30:00Z",
+      "team_members": [
+        {
+          "id": "user-1",
+          "first_name": "Alex",
+          "last_name": "Johnson",
+          "role": "Project Manager",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-2",
+          "first_name": "Sam",
+          "last_name": "Wilson",
+          "role": "Backend Developer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-3",
+          "first_name": "Jamie",
+          "last_name": "Smith",
+          "role": "Frontend Developer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-4",
+          "first_name": "Taylor",
+          "last_name": "Brown",
+          "role": "UI/UX Designer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        }
+      ]
+    },
+    {
+      "project_id": "project-2",
+      "project_title": "Mobile App",
+      "description": "Cross-platform mobile application with offline capabilities and push notifications",
+      "status": "In Progress",
+      "progress_percentage": 38,
+      "total_tasks": 8,
+      "completed_tasks": 3,
+      "created_at": "2023-02-28T10:15:00Z",
+      "updated_at": "2023-03-06T14:45:00Z",
+      "team_members": [
+        {
+          "id": "user-1",
+          "first_name": "Alex",
+          "last_name": "Johnson",
+          "role": "Project Manager",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-5",
+          "first_name": "Jordan",
+          "last_name": "Patel",
+          "role": "Mobile Developer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-6",
+          "first_name": "Riley",
+          "last_name": "Garcia",
+          "role": "Backend Developer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        },
+        {
+          "id": "user-7",
+          "first_name": "Avery",
+          "last_name": "Martinez",
+          "role": "QA Engineer",
+          "profile_image": "/placeholder.svg?height=40&width=40"
+        }
+      ]
+    },
+    {
+      "project_id": "project-3",
+      "project_title": "Marketing Campaign",
+      "total_tasks": 6,
+      "completed_tasks": 6,
+      "progress_percentage": 100
+    }
+  ],
+  "currentUser": {
+    "id": "user-1",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "role": "admin",
+    "profile_image": null,
+    "online": true
+  },
+  "users": [
+    {
+      "id": "user-admin",
+      "first_name": "Admin",
+      "last_name": "User",
+      "email": "admin@example.com",
+      "password": "123456",
+      "role": "admin",
+      "profile_image": "/placeholder.svg?height=40&width=40",
+      "online": true
+    },
+    {
+      "id": "user-customer",
+      "first_name": "Customer",
+      "last_name": "User",
+      "email": "customer@example.com",
+      "password": "123456",
+      "role": "customer",
+      "profile_image": "/placeholder.svg?height=40&width=40",
+      "online": true
+    },
+    {
+      "id": "user-team",
+      "first_name": "Team",
+      "last_name": "Member",
+      "email": "team@example.com",
+      "password": "123456",
+      "role": "team-member",
+      "profile_image": "/placeholder.svg?height=40&width=40",
+      "online": true
+    }
+  ],
+  "conversations": [
+    {
+      "id": "conv-1",
+      "title": "",
+      "is_group": false,
+      "participants": [
+        {
+          "id": "user-2",
+          "first_name": "Jane",
+          "last_name": "Smith",
+          "profile_image": null,
+          "online": true
+        }
+      ],
+      "project_title": "E-commerce Website",
+      "last_message": {
+        "content": "I've completed the homepage design. Can you review it?",
+        "created_at": "2023-03-08T14:30:00Z",
+        "sender_id": "user-2"
+      },
+      "unread_count": 2
+    },
+    {
+      "id": "conv-2",
+      "title": "Mobile App Team",
+      "is_group": true,
+      "participants": [
+        {
+          "id": "user-2",
+          "first_name": "Jane",
+          "last_name": "Smith",
+          "profile_image": null,
+          "online": true
+        },
+        {
+          "id": "user-3",
+          "first_name": "Mike",
+          "last_name": "Johnson",
+          "profile_image": null,
+          "online": false
+        },
+        {
+          "id": "user-4",
+          "first_name": "Sarah",
+          "last_name": "Williams",
+          "profile_image": null,
+          "online": false
+        }
+      ],
+      "project_title": "Mobile App",
+      "last_message": {
+        "content": "Let's schedule a meeting to discuss the API integration.",
+        "created_at": "2023-03-07T16:45:00Z",
+        "sender_id": "user-3"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-3",
+      "title": "",
+      "is_group": false,
+      "participants": [
+        {
+          "id": "user-3",
+          "first_name": "Mike",
+          "last_name": "Johnson",
+          "profile_image": null,
+          "online": false
+        }
+      ],
+      "project_title": "",
+      "last_message": {
+        "content": "Can you help me with the payment gateway integration?",
+        "created_at": "2023-03-06T11:20:00Z",
+        "sender_id": "user-1"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-4",
+      "title": "",
+      "is_group": false,
+      "project_title": "Project Gamma",
+      "participants": [
+        {
+          "id": "user-9",
+          "first_name": "Daniel",
+          "last_name": "Anderson",
+          "email": "daniel@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        }
+      ],
+      "last_message": {
+        "content": "Can we schedule a call to discuss the timeline?",
+        "created_at": "2023-03-10T09:20:00Z",
+        "sender_id": "user-1"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-5",
+      "title": "Design Review",
+      "is_group": true,
+      "project_title": "Project Delta",
+      "participants": [
+        {
+          "id": "user-10",
+          "first_name": "Olivia",
+          "last_name": "Martinez",
+          "email": "olivia@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        },
+        {
+          "id": "user-11",
+          "first_name": "James",
+          "last_name": "Thompson",
+          "email": "james@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        }
+      ],
+      "last_message": {
+        "content": "The client approved the mockups",
+        "created_at": "2023-03-09T15:10:00Z",
+        "sender_id": "user-10"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-6",
+      "title": "",
+      "is_group": false,
+      "project_title": "Project Epsilon",
+      "participants": [
+        {
+          "id": "user-12",
+          "first_name": "Robert",
+          "last_name": "Garcia",
+          "email": "robert@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "I need your feedback on the latest prototype",
+        "created_at": "2023-03-08T11:25:00Z",
+        "sender_id": "user-12"
+      },
+      "unread_count": 3
+    },
+    {
+      "id": "conv-7",
+      "title": "Frontend Team",
+      "is_group": true,
+      "project_title": "Project Zeta",
+      "participants": [
+        {
+          "id": "user-13",
+          "first_name": "Sophia",
+          "last_name": "Lee",
+          "email": "sophia@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        },
+        {
+          "id": "user-14",
+          "first_name": "William",
+          "last_name": "Clark",
+          "email": "william@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        },
+        {
+          "id": "user-15",
+          "first_name": "Emma",
+          "last_name": "Rodriguez",
+          "email": "emma@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "The new component library is ready for review",
+        "created_at": "2023-03-07T14:15:00Z",
+        "sender_id": "user-14"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-8",
+      "title": "",
+      "is_group": false,
+      "project_title": "",
+      "participants": [
+        {
+          "id": "user-16",
+          "first_name": "Noah",
+          "last_name": "White",
+          "email": "noah@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        }
+      ],
+      "last_message": {
+        "content": "Can you help me with the deployment issue?",
+        "created_at": "2023-03-06T09:45:00Z",
+        "sender_id": "user-16"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-9",
+      "title": "Backend Team",
+      "is_group": true,
+      "project_title": "Project Theta",
+      "participants": [
+        {
+          "id": "user-17",
+          "first_name": "Ava",
+          "last_name": "Harris",
+          "email": "ava@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        },
+        {
+          "id": "user-18",
+          "first_name": "Ethan",
+          "last_name": "Martin",
+          "email": "ethan@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        },
+        {
+          "id": "user-19",
+          "first_name": "Isabella",
+          "last_name": "Walker",
+          "email": "isabella@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "Database migration completed successfully",
+        "created_at": "2023-03-05T16:30:00Z",
+        "sender_id": "user-18"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-10",
+      "title": "",
+      "is_group": false,
+      "project_title": "Project Iota",
+      "participants": [
+        {
+          "id": "user-20",
+          "first_name": "Mason",
+          "last_name": "Allen",
+          "email": "mason@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "The client meeting is scheduled for tomorrow at 2 PM",
+        "created_at": "2023-03-04T13:20:00Z",
+        "sender_id": "user-20"
+      },
+      "unread_count": 1
+    },
+    {
+      "id": "conv-11",
+      "title": "Product Team",
+      "is_group": true,
+      "project_title": "",
+      "participants": [
+        {
+          "id": "user-21",
+          "first_name": "Charlotte",
+          "last_name": "Young",
+          "email": "charlotte@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        },
+        {
+          "id": "user-22",
+          "first_name": "Liam",
+          "last_name": "King",
+          "email": "liam@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "We need to prioritize the feature requests for the next sprint",
+        "created_at": "2023-03-03T10:05:00Z",
+        "sender_id": "user-21"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-12",
+      "title": "",
+      "is_group": false,
+      "project_title": "Project Kappa",
+      "participants": [
+        {
+          "id": "user-23",
+          "first_name": "Amelia",
+          "last_name": "Wright",
+          "email": "amelia@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "I've updated the project timeline based on our discussion",
+        "created_at": "2023-03-02T15:40:00Z",
+        "sender_id": "user-23"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-13",
+      "title": "QA Team",
+      "is_group": true,
+      "project_title": "Project Lambda",
+      "participants": [
+        {
+          "id": "user-24",
+          "first_name": "Benjamin",
+          "last_name": "Scott",
+          "email": "benjamin@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        },
+        {
+          "id": "user-25",
+          "first_name": "Mia",
+          "last_name": "Green",
+          "email": "mia@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        },
+        {
+          "id": "user-26",
+          "first_name": "Elijah",
+          "last_name": "Baker",
+          "email": "elijah@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        }
+      ],
+      "last_message": {
+        "content": "All test cases have been executed for the release",
+        "created_at": "2023-03-01T11:55:00Z",
+        "sender_id": "user-25"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-14",
+      "title": "",
+      "is_group": false,
+      "project_title": "",
+      "participants": [
+        {
+          "id": "user-27",
+          "first_name": "Harper",
+          "last_name": "Adams",
+          "email": "harper@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "Do you have time for a quick call today?",
+        "created_at": "2023-02-28T09:10:00Z",
+        "sender_id": "user-27"
+      },
+      "unread_count": 0
+    },
+    {
+      "id": "conv-15",
+      "title": "DevOps Team",
+      "is_group": true,
+      "project_title": "Project Mu",
+      "participants": [
+        {
+          "id": "user-28",
+          "first_name": "Lucas",
+          "last_name": "Nelson",
+          "email": "lucas@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": false
+        },
+        {
+          "id": "user-29",
+          "first_name": "Evelyn",
+          "last_name": "Carter",
+          "email": "evelyn@example.com",
+          "profile_image": "/placeholder.svg?height=40&width=40",
+          "online": true
+        }
+      ],
+      "last_message": {
+        "content": "The CI/CD pipeline has been optimized",
+        "created_at": "2023-02-27T14:25:00Z",
+        "sender_id": "user-28"
+      },
+      "unread_count": 0
+    }
+  ],
+  "messages": {
+    "conv-1": [
+      {
+        "id": "msg-1",
+        "conversation_id": "conv-1",
+        "sender_id": "user-2",
+        "content": "Hi John, I've been working on the homepage design for the e-commerce website.",
+        "created_at": "2023-03-08T14:15:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-2",
+        "conversation_id": "conv-1",
+        "sender_id": "user-2",
+        "content": "I've completed the homepage design. Can you review it?",
+        "created_at": "2023-03-08T14:30:00Z",
+        "read": false,
+        "attachments": [
+          {
+            "id": "att-1",
+            "name": "homepage-design.fig",
+            "size": "2.4 MB"
+          }
+        ]
+      },
+      {
+        "id": "msg-3",
+        "conversation_id": "conv-1",
+        "sender_id": "user-1",
+        "content": "Sure, I'll take a look at it right away.",
+        "created_at": "2023-03-08T14:35:00Z",
+        "read": true
+      }
+    ],
+    "conv-2": [
+      {
+        "id": "msg-4",
+        "conversation_id": "conv-2",
+        "sender_id": "user-3",
+        "content": "Team, we need to discuss the API integration for the mobile app.",
+        "created_at": "2023-03-07T16:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-5",
+        "conversation_id": "conv-2",
+        "sender_id": "user-4",
+        "content": "I agree. We should finalize the endpoints soon.",
+        "created_at": "2023-03-07T16:40:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-6",
+        "conversation_id": "conv-2",
+        "sender_id": "user-3",
+        "content": "Let's schedule a meeting to discuss the API integration.",
+        "created_at": "2023-03-07T16:45:00Z",
+        "read": true
+      }
+    ],
+    "conv-3": [
+      {
+        "id": "msg-7",
+        "conversation_id": "conv-3",
+        "sender_id": "user-1",
+        "content": "Can you help me with the payment gateway integration?",
+        "created_at": "2023-03-06T11:20:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-8",
+        "conversation_id": "conv-3",
+        "sender_id": "user-3",
+        "content": "Sure, I can help. What specific issues are you facing?",
+        "created_at": "2023-03-06T11:25:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-9",
+        "conversation_id": "conv-3",
+        "sender_id": "user-1",
+        "content": "I'm having trouble with the webhook configuration.",
+        "created_at": "2023-03-06T11:30:00Z",
+        "read": true
+      }
+    ],
+    "conv-4": [
+      {
+        "id": "msg-19",
+        "conversation_id": "conv-4",
+        "sender_id": "user-9",
+        "content": "Hi, I wanted to check in on the progress of Project Gamma.",
+        "created_at": "2023-03-10T08:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-20",
+        "conversation_id": "conv-4",
+        "sender_id": "user-1",
+        "content": "We're on track with the development. The backend API is almost complete.",
+        "created_at": "2023-03-10T08:10:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-21",
+        "conversation_id": "conv-4",
+        "sender_id": "user-9",
+        "content": "That's good to hear. When do you think we can start integration testing?",
+        "created_at": "2023-03-10T08:15:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-22",
+        "conversation_id": "conv-4",
+        "sender_id": "user-1",
+        "content": "Can we schedule a call to discuss the timeline?",
+        "created_at": "2023-03-10T09:20:00Z",
+        "read": true
+      }
+    ],
+    "conv-5": [
+      {
+        "id": "msg-23",
+        "conversation_id": "conv-5",
+        "sender_id": "user-10",
+        "content": "I've uploaded the latest design mockups for review.",
+        "created_at": "2023-03-09T13:00:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-4",
+            "name": "project-delta-mockups.sketch",
+            "size": "8.5 MB"
+          }
+        ]
+      },
+      {
+        "id": "msg-24",
+        "conversation_id": "conv-5",
+        "sender_id": "user-1",
+        "content": "These look great! I especially like the new dashboard layout.",
+        "created_at": "2023-03-09T13:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-25",
+        "conversation_id": "conv-5",
+        "sender_id": "user-11",
+        "content": "I agree. The color scheme is much better now. Just a few minor tweaks needed on the mobile views.",
+        "created_at": "2023-03-09T14:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-26",
+        "conversation_id": "conv-5",
+        "sender_id": "user-10",
+        "content": "I'll make those adjustments and send an updated version tomorrow.",
+        "created_at": "2023-03-09T14:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-27",
+        "conversation_id": "conv-5",
+        "sender_id": "user-10",
+        "content": "The client approved the mockups",
+        "created_at": "2023-03-09T15:10:00Z",
+        "read": true
+      }
+    ],
+    "conv-6": [
+      {
+        "id": "msg-28",
+        "conversation_id": "conv-6",
+        "sender_id": "user-12",
+        "content": "Hi, I need your feedback on the latest prototype we've developed.",
+        "created_at": "2023-03-08T11:00:00Z",
+        "read": false
+      },
+      {
+        "id": "msg-29",
+        "conversation_id": "conv-6",
+        "sender_id": "user-1",
+        "content": "Sure, I'll take a look at it today. Is there anything specific you want me to focus on?",
+        "created_at": "2023-03-08T11:10:00Z",
+        "read": false
+      },
+      {
+        "id": "msg-30",
+        "conversation_id": "conv-6",
+        "sender_id": "user-12",
+        "content": "Yes, please check the user flow and the responsiveness on mobile devices.",
+        "created_at": "2023-03-08T11:15:00Z",
+        "read": false
+      },
+      {
+        "id": "msg-31",
+        "conversation_id": "conv-6",
+        "sender_id": "user-12",
+        "content": "I need your feedback on the latest prototype",
+        "created_at": "2023-03-08T11:25:00Z",
+        "read": false,
+        "attachments": [
+          {
+            "id": "attach-5",
+            "name": "prototype-v3.fig",
+            "size": "5.7 MB"
+          }
+        ]
+      }
+    ],
+    "conv-7": [
+      {
+        "id": "msg-32",
+        "conversation_id": "conv-7",
+        "sender_id": "user-13",
+        "content": "Team, we need to finalize the component library for the next release.",
+        "created_at": "2023-03-07T13:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-33",
+        "conversation_id": "conv-7",
+        "sender_id": "user-14",
+        "content": "I've completed the button and form components. They're ready for review.",
+        "created_at": "2023-03-07T13:45:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-34",
+        "conversation_id": "conv-7",
+        "sender_id": "user-15",
+        "content": "I've finished the navigation and card components as well.",
+        "created_at": "2023-03-07T14:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-35",
+        "conversation_id": "conv-7",
+        "sender_id": "user-1",
+        "content": "Great work! I'll review everything and provide feedback by tomorrow.",
+        "created_at": "2023-03-07T14:10:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-36",
+        "conversation_id": "conv-7",
+        "sender_id": "user-14",
+        "content": "The new component library is ready for review",
+        "created_at": "2023-03-07T14:15:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-6",
+            "name": "component-library-docs.pdf",
+            "size": "3.2 MB"
+          }
+        ]
+      }
+    ],
+    "conv-8": [
+      {
+        "id": "msg-37",
+        "conversation_id": "conv-8",
+        "sender_id": "user-16",
+        "content": "Hi, I'm having an issue with the deployment process. Can you help?",
+        "created_at": "2023-03-06T09:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-38",
+        "conversation_id": "conv-8",
+        "sender_id": "user-1",
+        "content": "Of course. What's the specific issue you're encountering?",
+        "created_at": "2023-03-06T09:35:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-39",
+        "conversation_id": "conv-8",
+        "sender_id": "user-16",
+        "content": "The build is failing with an error related to environment variables.",
+        "created_at": "2023-03-06T09:40:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-40",
+        "conversation_id": "conv-8",
+        "sender_id": "user-16",
+        "content": "Can you help me with the deployment issue?",
+        "created_at": "2023-03-06T09:45:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-7",
+            "name": "error-log.txt",
+            "size": "1.1 MB"
+          }
+        ]
+      }
+    ],
+    "conv-9": [
+      {
+        "id": "msg-41",
+        "conversation_id": "conv-9",
+        "sender_id": "user-17",
+        "content": "Team, we need to plan the database migration for next week.",
+        "created_at": "2023-03-05T15:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-42",
+        "conversation_id": "conv-9",
+        "sender_id": "user-18",
+        "content": "I've prepared the migration scripts and tested them in the staging environment.",
+        "created_at": "2023-03-05T15:15:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-43",
+        "conversation_id": "conv-9",
+        "sender_id": "user-19",
+        "content": "Have we scheduled the maintenance window for the migration?",
+        "created_at": "2023-03-05T15:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-44",
+        "conversation_id": "conv-9",
+        "sender_id": "user-1",
+        "content": "Yes, it's scheduled for Sunday at 2 AM. I've notified all stakeholders.",
+        "created_at": "2023-03-05T15:45:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-45",
+        "conversation_id": "conv-9",
+        "sender_id": "user-18",
+        "content": "Database migration completed successfully",
+        "created_at": "2023-03-05T16:30:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-8",
+            "name": "migration-report.xlsx",
+            "size": "2.3 MB"
+          }
+        ]
+      }
+    ],
+    "conv-10": [
+      {
+        "id": "msg-46",
+        "conversation_id": "conv-10",
+        "sender_id": "user-20",
+        "content": "Hi, I wanted to discuss the upcoming client meeting.",
+        "created_at": "2023-03-04T13:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-47",
+        "conversation_id": "conv-10",
+        "sender_id": "user-1",
+        "content": "Sure, what do you need to discuss?",
+        "created_at": "2023-03-04T13:05:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-48",
+        "conversation_id": "conv-10",
+        "sender_id": "user-20",
+        "content": "We need to prepare a presentation of our progress so far.",
+        "created_at": "2023-03-04T13:10:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-49",
+        "conversation_id": "conv-10",
+        "sender_id": "user-20",
+        "content": "The client meeting is scheduled for tomorrow at 2 PM",
+        "created_at": "2023-03-04T13:20:00Z",
+        "read": false,
+        "attachments": [
+          {
+            "id": "attach-9",
+            "name": "meeting-agenda.docx",
+            "size": "1.5 MB"
+          }
+        ]
+      }
+    ],
+    "conv-11": [
+      {
+        "id": "msg-50",
+        "conversation_id": "conv-11",
+        "sender_id": "user-21",
+        "content": "Team, we need to prioritize the feature requests for the next sprint.",
+        "created_at": "2023-03-03T09:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-51",
+        "conversation_id": "conv-11",
+        "sender_id": "user-22",
+        "content": "I've categorized them based on customer impact and development effort.",
+        "created_at": "2023-03-03T09:45:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-52",
+        "conversation_id": "conv-11",
+        "sender_id": "user-1",
+        "content": "That's helpful. Let's review them in the planning meeting tomorrow.",
+        "created_at": "2023-03-03T10:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-53",
+        "conversation_id": "conv-11",
+        "sender_id": "user-21",
+        "content": "We need to prioritize the feature requests for the next sprint",
+        "created_at": "2023-03-03T10:05:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-10",
+            "name": "feature-prioritization.xlsx",
+            "size": "2.1 MB"
+          }
+        ]
+      }
+    ],
+    "conv-12": [
+      {
+        "id": "msg-54",
+        "conversation_id": "conv-12",
+        "sender_id": "user-23",
+        "content": "Hi, I've been working on updating the project timeline.",
+        "created_at": "2023-03-02T15:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-55",
+        "conversation_id": "conv-12",
+        "sender_id": "user-1",
+        "content": "Great! What changes have you made?",
+        "created_at": "2023-03-02T15:10:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-56",
+        "conversation_id": "conv-12",
+        "sender_id": "user-23",
+        "content": "I've adjusted the milestones based on our current progress and resource availability.",
+        "created_at": "2023-03-02T15:20:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-57",
+        "conversation_id": "conv-12",
+        "sender_id": "user-23",
+        "content": "I've updated the project timeline based on our discussion",
+        "created_at": "2023-03-02T15:40:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-11",
+            "name": "updated-timeline.pdf",
+            "size": "3.4 MB"
+          }
+        ]
+      }
+    ],
+    "conv-13": [
+      {
+        "id": "msg-58",
+        "conversation_id": "conv-13",
+        "sender_id": "user-24",
+        "content": "Team, we need to finalize the test plan for the upcoming release.",
+        "created_at": "2023-03-01T11:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-59",
+        "conversation_id": "conv-13",
+        "sender_id": "user-25",
+        "content": "I've prepared the test cases for the new features.",
+        "created_at": "2023-03-01T11:15:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-60",
+        "conversation_id": "conv-13",
+        "sender_id": "user-26",
+        "content": "I'll handle the regression testing for existing functionality.",
+        "created_at": "2023-03-01T11:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-61",
+        "conversation_id": "conv-13",
+        "sender_id": "user-1",
+        "content": "Sounds good. Let's make sure we have adequate coverage for all critical paths.",
+        "created_at": "2023-03-01T11:45:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-62",
+        "conversation_id": "conv-13",
+        "sender_id": "user-25",
+        "content": "All test cases have been executed for the release",
+        "created_at": "2023-03-01T11:55:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-12",
+            "name": "test-results.pdf",
+            "size": "4.2 MB"
+          }
+        ]
+      }
+    ],
+    "conv-14": [
+      {
+        "id": "msg-63",
+        "conversation_id": "conv-14",
+        "sender_id": "user-27",
+        "content": "Hi, I wanted to discuss some ideas for improving our workflow.",
+        "created_at": "2023-02-28T08:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-64",
+        "conversation_id": "conv-14",
+        "sender_id": "user-1",
+        "content": "I'm all ears. What do you have in mind?",
+        "created_at": "2023-02-28T08:40:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-65",
+        "conversation_id": "conv-14",
+        "sender_id": "user-27",
+        "content": "I think we could streamline our code review process and implement more automated testing.",
+        "created_at": "2023-02-28T08:50:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-66",
+        "conversation_id": "conv-14",
+        "sender_id": "user-27",
+        "content": "Do you have time for a quick call today?",
+        "created_at": "2023-02-28T09:10:00Z",
+        "read": true
+      }
+    ],
+    "conv-15": [
+      {
+        "id": "msg-67",
+        "conversation_id": "conv-15",
+        "sender_id": "user-28",
+        "content": "Team, I've been working on optimizing our CI/CD pipeline.",
+        "created_at": "2023-02-27T14:00:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-68",
+        "conversation_id": "conv-15",
+        "sender_id": "user-29",
+        "content": "That's great! What improvements have you made?",
+        "created_at": "2023-02-27T14:10:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-69",
+        "conversation_id": "conv-15",
+        "sender_id": "user-1",
+        "content": "Yes, I'd like to know more about the optimizations as well.",
+        "created_at": "2023-02-27T14:15:00Z",
+        "read": true
+      },
+      {
+        "id": "msg-70",
+        "conversation_id": "conv-15",
+        "sender_id": "user-28",
+        "content": "The CI/CD pipeline has been optimized",
+        "created_at": "2023-02-27T14:25:00Z",
+        "read": true,
+        "attachments": [
+          {
+            "id": "attach-13",
+            "name": "pipeline-optimization-report.pdf",
+            "size": "2.8 MB"
+          }
+        ]
+      }
+    ]
+  }
+}
+

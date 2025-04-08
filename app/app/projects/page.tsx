@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { demoProjects } from "@/lib/data-utils"
+import { useAuthStore } from "@/lib/stores/auth-store"
+import { useProjectsStore } from "@/lib/stores/projects-store"
+import { toast } from "@/components/ui/use-toast"
 
 // Animation variants
 const fadeInUp = {
@@ -39,39 +42,44 @@ const staggerContainer = {
 }
 
 export default function ProjectsPage() {
+
+  const {getProjects,isLoading} = useProjectsStore()
+  const {user} = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [projects, setProjects] = useState(demoProjects)
-  const [loading, setLoading] = useState(true)
+  const [projects, setProjects] = useState([{}])
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortOrder, setSortOrder] = useState("newest")
-  const [userRole, setUserRole] = useState("") // Initialize empty, will be populated from localStorage
+  // const [userRole, setUserRole] = useState("") // Initialize empty, will be populated from localStorage
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1000)
+  const userRole = user?.role
 
-    return () => clearTimeout(timer)
-  }, [])
+   // Get status text
+   const getStatusText = (progress: number) => {
+    if (progress >= 100) return "Completed"
+    if (progress > 50) return "In Progress"
+    return "Planning"
+  }
+
 
   // Update search query when URL changes
+  const getProject  = async()=>{
+    const {data,error} = await getProjects()
+    setProjects(data)
+  }
+  useEffect(() => {
+    getProject()
+  }, [])
+
+
   useEffect(() => {
     setSearchQuery(searchParams?.get("q") || "")
   }, [searchParams])
 
-  // Get user role from localStorage
-  useEffect(() => {
-    // Only access localStorage after component mounts (client-side)
-    const storedRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : null
-    // Set a default role if none is found
-    setUserRole(storedRole || "customer")
-  }, [])
 
   // Handle search input change without form submission
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,10 +104,9 @@ export default function ProjectsPage() {
   }
 
   // Filter and sort projects
-  const filteredProjects = projects
-    .filter((project) => {
+  const filteredProjects = projects?.filter((project:any) => {
       // Search filter
-      if (searchQuery && !project.project_title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (searchQuery && !project.title.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false
       }
 
@@ -112,8 +119,7 @@ export default function ProjectsPage() {
       }
 
       return true
-    })
-    .sort((a, b) => {
+    })?.sort((a:any, b:any) => {
       // Sort by date or progress
       if (sortOrder === "newest") {
         return -1 // Simulating newest first
@@ -126,7 +132,6 @@ export default function ProjectsPage() {
       }
       return 0
     })
-
   // Get status badge color
   const getStatusColor = (progress: number) => {
     if (progress >= 100) return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
@@ -134,14 +139,9 @@ export default function ProjectsPage() {
     return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
   }
 
-  // Get status text
-  const getStatusText = (progress: number) => {
-    if (progress >= 100) return "Completed"
-    if (progress > 50) return "In Progress"
-    return "Planning"
-  }
 
-  if (loading) {
+
+  if (isLoading) {
     return (
       <div className="space-y-8 animate-pulse">
         <div className="flex items-center justify-between">
@@ -242,34 +242,34 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {filteredProjects.length > 0 ? (
+      {filteredProjects?.length > 0 ? (
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {filteredProjects.map((project) => (
+          {filteredProjects?.map((project,i) => (
             <motion.div
-              key={project.project_id}
+              key={i}
               variants={fadeInUp}
               whileHover={{ y: -5, transition: { duration: 0.2 } }}
             >
               <Card
                 className="h-full hover:shadow-md transition-all overflow-hidden cursor-pointer"
-                onClick={() => router.push(`/app/projects/${project.project_id}`)}
+                onClick={() => router.push(`/app/projects/${project.id}`)}
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-purple-600"></div>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>{project.project_title}</CardTitle>
+                      <CardTitle>{project.title}</CardTitle>
                       {(userRole === "admin" || userRole === "team") && (
                         <CardDescription>
                           {project.total_tasks} tasks • {project.completed_tasks} completed
                         </CardDescription>
                       )}
-                      {userRole === "customer" && <CardDescription>Project ID: {project.project_id}</CardDescription>}
+                      {/* {userRole === "customer" && <CardDescription>Project ID: {project.id}</CardDescription>} */}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -279,10 +279,10 @@ export default function ProjectsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/app/projects/${project.project_id}`}>View Details</Link>
+                          <Link href={`/app/projects/${project.id}`}>View Details</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/app/projects/${project.project_id}/edit`}>
+                          <Link href={`/app/projects/${project.id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Project
                           </Link>
@@ -316,7 +316,7 @@ export default function ProjectsPage() {
                         className="h-8 gap-1"
                         onClick={(e) => {
                           e.stopPropagation()
-                          router.push(`/app/projects/${project.project_id}`)
+                          router.push(`/app/projects/${project.id}`)
                         }}
                       >
                         View
@@ -351,4 +351,3 @@ export default function ProjectsPage() {
     </div>
   )
 }
-

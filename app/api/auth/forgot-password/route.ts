@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+// import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import prisma from "@/lib/prisma/client";
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"; // Use a secure secret key
 
 export async function POST(req: Request) {

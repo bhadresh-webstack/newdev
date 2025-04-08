@@ -41,7 +41,7 @@ export function DashboardHeader({ user, className, onMobileMenuToggle }: Dashboa
       .toUpperCase()
   }
 
-  const userInitials = getInitials(`${user.first_name || ""} ${user.last_name || ""}`)
+  const userInitials = getInitials(`${user.user_name || ""}`)
 
   const toggleMobileSearch = () => {
     setIsMobileSearchActive(!isMobileSearchActive)
@@ -156,7 +156,7 @@ export function DashboardHeader({ user, className, onMobileMenuToggle }: Dashboa
               <DropdownMenuContent align="end" className="w-56">
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{`${user.first_name} ${user.last_name}`}</p>
+                    <p className="font-medium">{`${user.user_name}`}</p>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
@@ -182,4 +182,3 @@ export function DashboardHeader({ user, className, onMobileMenuToggle }: Dashboa
     </header>
   )
 }
-

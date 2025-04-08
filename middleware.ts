@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { cookies } from "next/headers"; // ✅ Use Edge-compatible cookies API
 
 export function middleware(req: NextRequest) {
+
   const { nextUrl } = req;
 
-  // ✅ Check if token is in query params for reset password page
+  // ✅ Get auth token from cookies
+  const token = req.cookies.get("auth_token")?.value;
+
+  // ✅ Redirect authenticated users away from public pages
+  if (token && ["/login", "/", "/signup"].includes(nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/app", req.url));
+  }
+
+  // ✅ Check if reset password token exists in query params
   if (nextUrl.pathname.startsWith("/reset-password")) {
     const searchParams = new URLSearchParams(nextUrl.search);
     if (!searchParams.has("token")) {
@@ -14,6 +22,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // ✅ Require `plan` parameter for `/signup`
   if (nextUrl.pathname.startsWith("/signup")) {
     const searchParams = new URLSearchParams(nextUrl.search);
     if (!searchParams.has("plan")) {
@@ -22,18 +31,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Protected routes (`/app/*`): Check if auth_token exists in cookies
-  const token = req.cookies.get("auth_token")?.value;
-
-  if (!token) {
+  // ✅ Protect `/app/*` routes: Redirect to `/login` if no token
+  if (nextUrl.pathname.startsWith("/app") && !token) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // ✅ Since Edge Runtime does not support `jsonwebtoken`, we just check if token exists
   return NextResponse.next();
 }
 
-// ✅ Apply middleware to protect `/app/*` and `/reset-password`
+// ✅ Apply middleware to relevant routes
 export const config = {
-  matcher: ["/app/:path*", "/reset-password","/signup"],
+  matcher: ["/", "/login", "/signup", "/app/:path*", "/reset-password"],
 };

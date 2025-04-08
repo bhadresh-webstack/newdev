@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback, memo } from "react"
 import { CalendarIcon, CheckCircle, Circle, Clock } from "lucide-react"
 import { format } from "date-fns"
 
@@ -24,12 +24,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
+import { ENDPOINT } from "@/lib/api/end-point"
+import { apiRequest } from "@/lib/useApi"
 
 // Task status options with icons
 const statusOptions = [
   { value: "Pending", label: "Pending", icon: <Circle className="h-4 w-4 text-slate-500" /> },
   { value: "In Progress", label: "In Progress", icon: <Clock className="h-4 w-4 text-blue-500" /> },
   { value: "Completed", label: "Completed", icon: <CheckCircle className="h-4 w-4 text-green-500" /> },
+  { value: "Blocked", label: "Blocked", icon: <Circle className="h-4 w-4 text-red-500" /> },
 ]
 
 // Priority options
@@ -52,8 +56,8 @@ const priorityOptions = [
   },
 ]
 
-// Task group options
-const groupOptions = [
+// Default task group options (fallback)
+const defaultGroupOptions = [
   { value: "Backlog", label: "Backlog" },
   { value: "To Do", label: "To Do" },
   { value: "In Progress", label: "In Progress" },
@@ -61,41 +65,158 @@ const groupOptions = [
   { value: "Done", label: "Done" },
 ]
 
-// Mock team members for assignment
-const teamMembers = [
-  { id: "user-1", name: "Alex Johnson", email: "alex@example.com", avatar: null },
-  { id: "user-2", name: "Sarah Miller", email: "sarah@example.com", avatar: null },
-  { id: "user-3", name: "Michael Brown", email: "michael@example.com", avatar: null },
-  { id: "user-4", name: "Emily Davis", email: "emily@example.com", avatar: null },
-]
+interface Project {
+  id: string
+  title: string
+}
 
-// Mock projects
-const projects = [
-  { id: "project-1", title: "E-commerce Website" },
-  { id: "project-2", title: "Mobile App" },
-  { id: "project-3", title: "Marketing Campaign" },
-]
+interface TeamMember {
+  id: string
+  user_name: string
+  email?: string
+  profile_image: string | null
+}
 
 interface NewTaskFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (taskData: any) => void
+  onSubmit: (taskData: any) => Promise<any>
+  initialProjectId?: string
+  initialTaskGroup?: string
 }
 
-export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
+export const NewTaskForm = memo(function NewTaskForm({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialProjectId = "",
+  initialTaskGroup = "To Do",
+}: NewTaskFormProps) {
+  // Data states
+  const [projects, setProjects] = useState<Project[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [taskGroups, setTaskGroups] = useState<string[]>([])
+
+  // Loading states
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+  const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false)
+  const [isLoadingTaskGroups, setIsLoadingTaskGroups] = useState(false)
+
+  // Form state
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     status: "Pending",
     priority: "Medium",
-    task_group: "To Do",
-    project_id: "",
+    task_group: initialTaskGroup,
+    project_id: initialProjectId,
     assigned_to: "",
     due_date: null as Date | null,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Reset form when it opens with initial values
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: "",
+        description: "",
+        status: "Pending",
+        priority: "Medium",
+        task_group: initialTaskGroup,
+        project_id: initialProjectId,
+        assigned_to: "",
+        due_date: null,
+      })
+      setErrors({})
+
+      // Fetch data when the form opens
+      fetchProjects()
+      fetchTeamMembers()
+
+      // If we have an initial project ID, fetch task groups for that project
+      if (initialProjectId) {
+        fetchTaskGroups(initialProjectId)
+      } else {
+        fetchTaskGroups()
+      }
+    }
+  }, [isOpen, initialProjectId, initialTaskGroup])
+
+  // Fetch projects from API
+  const fetchProjects = useCallback(async () => {
+    if (projects.length > 0) return // Don't fetch if we already have projects
+
+    setIsLoadingProjects(true)
+    try {
+      const { data, error } = await apiRequest<{ projects: Project[] }>("GET", ENDPOINT.PROJECT.fetchProjects)
+
+      if (error) {
+        console.error("Error fetching projects:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load projects. Using default options.",
+          variant: "destructive",
+        })
+      } else if (data && data.projects && data.projects.length > 0) {
+        setProjects(data.projects)
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error)
+    } finally {
+      setIsLoadingProjects(false)
+    }
+  }, [projects.length])
+
+  // Fetch team members from API
+  const fetchTeamMembers = useCallback(async () => {
+    if (teamMembers.length > 0) return // Don't fetch if we already have team members
+
+    setIsLoadingTeamMembers(true)
+    try {
+      const { data, error } = await apiRequest<{ team_members: TeamMember[] }>("GET", ENDPOINT.AUTH.allTeamMember)
+
+      if (error) {
+        console.error("Error fetching team members:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load team members. Using default options.",
+          variant: "destructive",
+        })
+      } else if (data && data.team_members && data.team_members.length > 0) {
+        setTeamMembers(data.team_members)
+      }
+    } catch (error) {
+      console.error("Error fetching team members:", error)
+    } finally {
+      setIsLoadingTeamMembers(false)
+    }
+  }, [teamMembers.length])
+
+  // Fetch task groups from API
+  const fetchTaskGroups = useCallback(async (projectId?: string) => {
+    setIsLoadingTaskGroups(true)
+    try {
+      let url = ENDPOINT.TASK.groups
+      if (projectId) {
+        url = `${url}?projectId=${projectId}`
+      }
+
+      const { data, error } = await apiRequest<string[]>("GET", url)
+
+      if (error) {
+        console.error("Error fetching task groups:", error)
+      } else if (data && data.length > 0) {
+        setTaskGroups(data)
+      }
+    } catch (error) {
+      console.error("Error fetching task groups:", error)
+    } finally {
+      setIsLoadingTaskGroups(false)
+    }
+  }, [])
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -107,20 +228,28 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
       .toUpperCase()
   }
 
-  const handleChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleChange = useCallback(
+    (field: string, value: any) => {
+      setFormData((prev) => ({ ...prev, [field]: value }))
 
-    // Clear error for this field if it exists
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
-    }
-  }
+      // If project changes, fetch task groups for that project
+      if (field === "project_id" && value) {
+        fetchTaskGroups(value)
+      }
 
-  const validateForm = () => {
+      // Clear error for this field if it exists
+      if (errors[field]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors[field]
+          return newErrors
+        })
+      }
+    },
+    [errors, fetchTaskGroups],
+  )
+
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.title.trim()) {
@@ -133,62 +262,56 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
+  }, [formData.title, formData.project_id])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
 
-    if (!validateForm()) {
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Create task object with all the form data
-      const newTask = {
-        id: `task-${Date.now()}`,
-        ...formData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project: projects.find((p) => p.id === formData.project_id) || { id: "", title: "" },
-        assigned_to_profile: formData.assigned_to
-          ? teamMembers.find((m) => m.id === formData.assigned_to)
-            ? {
-                id: formData.assigned_to,
-                first_name: teamMembers.find((m) => m.id === formData.assigned_to)?.name.split(" ")[0] || "",
-                last_name: teamMembers.find((m) => m.id === formData.assigned_to)?.name.split(" ")[1] || "",
-                profile_image: teamMembers.find((m) => m.id === formData.assigned_to)?.avatar || null,
-              }
-            : null
-          : null,
+      if (!validateForm()) {
+        return
       }
 
-      onSubmit(newTask)
+      setIsSubmitting(true)
 
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        status: "Pending",
-        priority: "Medium",
-        task_group: "To Do",
-        project_id: "",
-        assigned_to: "",
-        due_date: null,
-      })
+      try {
+        // Use the onSubmit callback with the form data
+        const result = await onSubmit(formData)
 
-      onClose()
-    } catch (error) {
-      console.error("Error creating task:", error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+        if (result) {
+          // Reset form
+          setFormData({
+            title: "",
+            description: "",
+            status: "Pending",
+            priority: "Medium",
+            task_group: initialTaskGroup,
+            project_id: initialProjectId,
+            assigned_to: "",
+            due_date: null,
+          })
 
+          onClose()
+        }
+      } catch (error: any) {
+        console.error("Error creating task:", error)
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create task. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [formData, initialProjectId, initialTaskGroup, onClose, onSubmit, validateForm],
+  )
+
+  // Get group options - use API data if available, otherwise use defaults
+  const groupOptions =
+    taskGroups.length > 0 ? taskGroups.map((group) => ({ value: group, label: group })) : defaultGroupOptions
+
+    console.log("setFormData",formData)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
@@ -236,15 +359,23 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
                       Project <span className="text-destructive">*</span>
                     </Label>
                     <Select value={formData.project_id} onValueChange={(value) => handleChange("project_id", value)}>
-                      <SelectTrigger id="project" className={cn(errors.project_id ? "border-destructive" : "")}>
-                        <SelectValue placeholder="Select project" />
+                      <SelectTrigger
+                        id="project"
+                        className={cn(errors.project_id ? "border-destructive" : "")}
+                        disabled={isLoadingProjects}
+                      >
+                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select project"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.title}
-                          </SelectItem>
-                        ))}
+                        {projects.length > 0 ? (
+                          projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="project-1">E-commerce Website</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     {errors.project_id && <p className="text-xs text-destructive mt-1">{errors.project_id}</p>}
@@ -253,23 +384,29 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
                   <div>
                     <Label htmlFor="assigned_to">Assign To</Label>
                     <Select value={formData.assigned_to} onValueChange={(value) => handleChange("assigned_to", value)}>
-                      <SelectTrigger id="assigned_to">
-                        <SelectValue placeholder="Select team member" />
+                      <SelectTrigger id="assigned_to" disabled={isLoadingTeamMembers}>
+                        <SelectValue
+                          placeholder={isLoadingTeamMembers ? "Loading team members..." : "Select team member"}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={member.avatar || undefined} alt={member.name} />
-                                <AvatarFallback className="text-xs bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                                  {getInitials(member.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span>{member.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {teamMembers.length > 0 ? (
+                          teamMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={member.profile_image || undefined} alt={member.user_name} />
+                                  <AvatarFallback className="text-xs bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                                    {getInitials(member.user_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{member.user_name}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-members">No team members available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -329,8 +466,8 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
                   <div>
                     <Label htmlFor="task_group">Group</Label>
                     <Select value={formData.task_group} onValueChange={(value) => handleChange("task_group", value)}>
-                      <SelectTrigger id="task_group">
-                        <SelectValue placeholder="Select group" />
+                      <SelectTrigger id="task_group" disabled={isLoadingTaskGroups}>
+                        <SelectValue placeholder={isLoadingTaskGroups ? "Loading groups..." : "Select group"} />
                       </SelectTrigger>
                       <SelectContent>
                         {groupOptions.map((option) => (
@@ -384,5 +521,4 @@ export function NewTaskForm({ isOpen, onClose, onSubmit }: NewTaskFormProps) {
       </DialogContent>
     </Dialog>
   )
-}
-
+})

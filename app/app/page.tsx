@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress"
 import { demoProjects, demoTasks } from "@/lib/data-utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { useAuthStore } from "@/lib/stores/auth-store"
 
 // Animation variants
 const fadeInUp = {
@@ -39,9 +40,11 @@ const staggerContainer = {
 }
 
 export default function DashboardPage() {
-  const [userRole, setUserRole] = useState<string>("user")
-  const [userName, setUserName] = useState<string>("User")
-  const [isLoading, setIsLoading] = useState(true)
+
+  const {user,isLoading} = useAuthStore()
+  // const [userRole, setUserRole] = useState<string>("user")
+  // const [userName, setUserName] = useState<string>("User")
+  // const [isLoading, setIsLoading] = useState(true)
   const [projects, setProjects] = useState(demoProjects)
   const [recentTasks, setRecentTasks] = useState(demoTasks.slice(0, 3))
   const [stats, setStats] = useState({
@@ -51,29 +54,33 @@ export default function DashboardPage() {
     inProgressTasks: demoTasks.filter((t) => t.status === "In Progress").length,
   })
 
-  useEffect(() => {
-    // Get user role from localStorage
-    if (typeof window !== "undefined") {
-      const storedRole = localStorage.getItem("userRole") || "user"
-      setUserRole(storedRole)
+  const userRole = user?.role
+  const userName = user?.user_name
 
-      // Set user name based on role
-      if (storedRole === "admin") {
-        setUserName("Admin")
-      } else if (storedRole === "customer") {
-        setUserName("Customer")
-      } else if (storedRole === "team") {
-        setUserName("Team Member")
-      }
-    }
+  // useEffect(() => {
+  //   console.log("user",user)
+  //   // Get user role from localStorage
+  //   if (typeof window !== "undefined") {
+  //     const storedRole = localStorage.getItem("userRole") || "user"
+  //     setUserRole(storedRole)
 
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+  //     // Set user name based on role
+  //     if (storedRole === "admin") {
+  //       setUserName("Admin")
+  //     } else if (storedRole === "customer") {
+  //       setUserName("Customer")
+  //     } else if (storedRole === "team") {
+  //       setUserName("Team Member")
+  //     }
+  //   }
 
-    return () => clearTimeout(timer)
-  }, [])
+  //   // Simulate loading data
+  //   const timer = setTimeout(() => {
+  //     setIsLoading(false)
+  //   }, 1000)
+
+  //   return () => clearTimeout(timer)
+  // }, [])
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -661,4 +668,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

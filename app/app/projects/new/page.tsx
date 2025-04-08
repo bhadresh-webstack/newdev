@@ -15,6 +15,7 @@ import ProjectRequirementsForm from "./project-requirements-form"
 import ProjectBudgetForm from "./project-budget-form"
 import ProjectTimelineForm from "./project-timeline-form"
 import ProjectReviewForm from "./project-review-form"
+import moment from 'moment';
 
 export default function NewProjectPage() {
   const router = useRouter()
@@ -251,7 +252,7 @@ export default function NewProjectPage() {
 
     setIsSubmitting(true)
 
-    try {
+
       // Prepare project data for submission
       const projectData = {
         title: formData.details.title,
@@ -264,7 +265,7 @@ export default function NewProjectPage() {
         deliverables: formData.requirements.deliverables.join(", "),
         budget: formData.budget.amount,
         payment_type: formData.budget.paymentType,
-        start_date: format(formData.timeline.startDate, "yyyy-MM-dd"),
+        start_date: new Date().toISOString(),
         duration_days: formData.timeline.duration,
         priority: formData.timeline.priority,
         visibility: formData.details.visibility,
@@ -274,26 +275,21 @@ export default function NewProjectPage() {
       const { data, error } = await createProject(projectData)
 
       if (error) {
-        throw new Error(error.message || "Failed to create project")
+        toast({
+          title: "Error creating project",
+          description: "There was an error creating your project. Please try again.",
+          variant: "destructive",
+        })
+        return
       }
 
       toast({
         title: "Project created successfully!",
         description: "Your new project has been created and is ready to go.",
       })
-
+      setIsSubmitting(false)
       // Redirect to the project page or projects list
       router.push("/app/projects")
-    } catch (error) {
-      console.error("Error creating project:", error)
-      toast({
-        title: "Error creating project",
-        description: error.message || "There was an error creating your project. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
   }
 
   return (
@@ -410,4 +406,3 @@ export default function NewProjectPage() {
     </div>
   )
 }
-

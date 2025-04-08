@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+// import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import prisma from "@/lib/prisma/client";
 
-const prisma = new PrismaClient();
 
 // ✅ Define validation schema using `zod`
 const signupSchema = z.object({

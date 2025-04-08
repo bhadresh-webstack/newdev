@@ -1,5 +1,7 @@
 import { create } from "zustand"
 import { mockProjects } from "@/lib/mock-data"
+import { ENDPOINT } from "../api/end-point"
+import { apiRequest } from "../useApi"
 
 type Project = {
   id: string
@@ -31,9 +33,11 @@ type ProjectsState = {
 
   // Actions
   fetchProjects: (query?: string) => Promise<void>
-  getProject: (id: string) => Promise<Project | null>
+
+  getProjectById: (id: string) => Promise<{ data: Project | null; error: any | null }>
+  getProjects: () => Promise<{ data: Project | null; error: any | null }>
   createProject: (
-    project: Omit<Project, "id" | "created_at" | "updated_at" | "customer_id">,
+    newProject: Project,
   ) => Promise<{ data: Project | null; error: any | null }>
   updateProject: (id: string, updates: Partial<Project>) => Promise<{ data: Project | null; error: any | null }>
   deleteProject: (id: string) => Promise<{ error: any | null }>
@@ -51,8 +55,8 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
       set({ isLoading: true, error: null })
 
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.fetchProjects+query)
+console.log("data",data)
       // Filter projects if query is provided
       const filteredProjects = query
         ? mockProjects.filter(
@@ -71,41 +75,74 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
       })
     }
   },
-
-  getProject: async (id: string) => {
+  getProjectById: async (id: string) => {
     try {
-      // Find project by ID
-      const project = mockProjects.find((p) => p.id === id) || null
-      return project
-    } catch (error) {
-      console.error("Error fetching project:", error)
-      return null
+      set({ isLoading: true, error: null });
+
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.fetchProjects+id);
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      set({ isLoading: false });
+
+      return { data: data?.project, error: null };
+    } catch (error: any) {
+      console.error("Error fetching project:", error);
+
+      set({
+        isLoading: false,
+        error: error.message || "Failed to fetch project",
+      });
+
+      return { data: null, error };
     }
   },
 
-  createProject: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "customer_id">) => {
+  getProjects: async () => {
+    try {
+      set({ isLoading: true, error: null });
+
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.getProjects);
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      set({
+        projects: data?.projects || [],
+        isLoading: false,
+      });
+
+      return { data: data?.projects, error: null };
+    } catch (error: any) {
+      console.error("Error fetching projects:", error);
+      set({
+        isLoading: false,
+        error: error.message || "Failed to fetch projects",
+      });
+
+      return { data: null, error };
+    }
+  },
+
+
+
+  createProject: async (newProject: Project) => {
     try {
       set({ isLoading: true, error: null })
 
+
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const response = await apiRequest("POST",ENDPOINT.PROJECT.create,newProject);
 
-      const newProject = {
-        id: Date.now().toString(),
-        customer_id: "mock-user-id",
-        ...project,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        progress_percentage: 0,
-        total_tasks: 0,
-        completed_tasks: 0,
-      }
-
+console.log("createProjectResponse",response)
       // Update local state
-      set((state) => ({
-        projects: [newProject, ...state.projects],
-        isLoading: false,
-      }))
+      // set((state) => ({
+      //   projects: [newProject, ...state.projects],
+      //   isLoading: false,
+      // }))
 
       return { data: newProject, error: null }
     } catch (error: any) {
@@ -183,4 +220,3 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }))
-

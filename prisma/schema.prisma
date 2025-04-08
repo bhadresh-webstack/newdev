@@ -19,6 +19,8 @@ model User {
   email         String    @unique
   password      String
   role          String    @default("customer") @db.VarChar(20)
+  team_role     String?   // Only for team_member
+  department    String?   // Only for team_member
   profile_image String?
   created_at    DateTime  @default(now())
   updated_at    DateTime?
@@ -31,18 +33,20 @@ model User {
   sentMessages     Message[]      @relation("SenderMessages")
   receivedMessages Message[]      @relation("ReceiverMessages")
   notifications    Notification[]
-  uploadedFiles    File[]         @relation("UserFiles") // Added this relation
+  uploadedFiles    File[]         @relation("UserFiles")
 }
+
 
 model Project {
   id                     String    @id @default(uuid())
   customer_id            String
+  customer_name          String?
   title                  String
   description            String
   status                 String
   pricing_tier           String
   created_at             DateTime  @default(now())
-  updated_at             DateTime?
+  updated_at             DateTime? @default(now())
   technical_requirements String?
   required_skills        String?
   deliverables           String?
@@ -53,6 +57,10 @@ model Project {
   priority               String?
   visibility             String?
 
+  progress_percentage    Int       @default(0)
+  total_tasks            Int       @default(0)
+  completed_tasks        Int       @default(0)
+
   customer   User        @relation("CustomerProjects", fields: [customer_id], references: [id])
   tasks      Task[]
   feedbacks  Feedback[]
@@ -62,6 +70,8 @@ model Project {
   files      File[]
 }
 
+
+
 model Task {
   id          String    @id @default(uuid())
   project_id  String
@@ -70,6 +80,7 @@ model Task {
   description String
   status      String
   task_group  String
+  priority    String    @default("Medium")
   created_at  DateTime  @default(now())
   updated_at  DateTime?
 

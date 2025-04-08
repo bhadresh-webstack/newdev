@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { createClient } from "@/lib/supabase/client"
 import type { User, Session } from "@supabase/supabase-js"
 
 type AuthState = {
@@ -271,4 +270,3 @@ export const useToastStore = create<ToastState>()((set) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     })),
 }))
-

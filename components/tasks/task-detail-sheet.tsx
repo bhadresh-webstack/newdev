@@ -527,4 +527,3 @@ export function TaskDetailSheet({ task, isOpen, onClose, onStatusChange, related
     </Sheet>
   )
 }
-

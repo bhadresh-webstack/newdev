@@ -3,7 +3,7 @@
 import type React from 'react'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Layers, Loader2, AlertCircle } from 'lucide-react'
 
@@ -38,6 +38,9 @@ export default function ForgotPasswordPage () {
   const { forgotPassword, isLoading, error, clearError } = useAuthStore()
   const { toast } = useToast()
 
+  useEffect(() => {
+    clearError()
+  }, [])
   const validateForm = () => {
     if (!email) {
       setFormError('Email is required')
@@ -177,7 +180,10 @@ export default function ForgotPasswordPage () {
                       placeholder='m@example.com'
                       className='transition-all border-muted-foreground/20 focus:border-primary'
                       value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={e => {
+                        setEmail(e.target.value)
+                        setFormError(null)
+                      }}
                       required
                     />
                   </motion.div>

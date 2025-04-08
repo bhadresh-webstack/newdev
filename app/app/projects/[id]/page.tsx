@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   FolderKanban,
@@ -17,23 +17,30 @@ import {
   Trash2,
   Plus,
   Calendar,
-  User,
-} from "lucide-react"
+  User
+} from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { demoProjects, demoTasks } from "@/lib/data-utils"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { demoProjects, demoTasks } from '@/lib/data-utils'
 import {
   Dialog,
   DialogContent,
@@ -41,16 +48,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+  DialogTrigger
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { useAuthStore } from '@/lib/stores/auth-store'
+import { useProjectsStore } from '@/lib/stores/projects-store'
+import moment from 'moment';
 
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 }
 
 const staggerContainer = {
@@ -58,79 +74,79 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-    },
-  },
+      staggerChildren: 0.1
+    }
+  }
 }
 
 // Task status icons and colors
 const statusIcons = {
-  Pending: <Circle className="h-4 w-4 text-slate-500" />,
-  "In Progress": <Clock className="h-4 w-4 text-blue-500" />,
-  Completed: <CheckCircle className="h-4 w-4 text-green-500" />,
+  Pending: <Circle className='h-4 w-4 text-slate-500' />,
+  'In Progress': <Clock className='h-4 w-4 text-blue-500' />,
+  Completed: <CheckCircle className='h-4 w-4 text-green-500' />
 }
 
 const statusColors = {
-  Pending: "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
-  "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
-  Completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+  Pending: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100',
+  'In Progress':
+    'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+  Completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
 }
 
-export default function ProjectDetailPage() {
+export default function ProjectDetailPage () {
+  const { user } = useAuthStore()
+  const { getProjectById,isLoading } = useProjectsStore()
+
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
-  const [loading, setLoading] = useState(true)
-  const [project, setProject] = useState(demoProjects.find((p) => p.project_id === projectId))
-  const [projectTasks, setProjectTasks] = useState(demoTasks.filter((t) => t.project.id === projectId))
+  // const [loading, setLoading] = useState(true)
+  const [project, setProject] = useState(null)
+  const [projectTasks, setProjectTasks] = useState(
+    demoTasks.filter(t => t.project.id === projectId)
+  )
 
-  const [userRole, setUserRole] = useState<"admin" | "team" | "customer" | "user">("user")
+  // const [userRole, setUserRole] = useState<"admin" | "team" | "customer" | "user">("user")
+  const userRole = user.role
 
   const [teamMembers, setTeamMembers] = useState([
-    { id: 1, name: "Alex Johnson", role: "Project Manager", image: null },
-    { id: 2, name: "Sarah Miller", role: "UI/UX Designer", image: null },
-    { id: 3, name: "David Chen", role: "Frontend Developer", image: null },
+    { id: 1, name: 'Alex Johnson', role: 'Project Manager', image: null },
+    { id: 2, name: 'Sarah Miller', role: 'UI/UX Designer', image: null },
+    { id: 3, name: 'David Chen', role: 'Frontend Developer', image: null }
   ])
   const [isAddingMember, setIsAddingMember] = useState(false)
-  const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
+  const [newMember, setNewMember] = useState({ name: '', role: '', email: '' })
 
-  // Simulate fetching user role - in a real app, this would come from your auth system
+
+
+  const getProject = async () => {
+    const { data, error } = await getProjectById(projectId)
+    setProject(data)
+  }
+
   useEffect(() => {
-    // This is a placeholder - replace with your actual auth logic
-    // For example: setUserRole(authStore.user?.role || 'user')
-    const simulatedRole = localStorage.getItem("userRole") || "user"
-    setUserRole(simulatedRole as any)
+    getProject()
   }, [])
-
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   // Get initials for avatar
   const getInitials = (name: string) => {
-    if (!name) return "U"
+    if (!name) return 'U'
     return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
+      .split(' ')
+      .map(part => part[0])
+      .join('')
       .toUpperCase()
   }
 
   // Format date to readable format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     }).format(date)
   }
 
@@ -142,7 +158,8 @@ export default function ProjectDetailPage() {
   const handleAddMember = () => {
     if (!newMember.name || !newMember.role) return
 
-    const newId = teamMembers.length > 0 ? Math.max(...teamMembers.map((m) => m.id)) + 1 : 1
+    const newId =
+      teamMembers.length > 0 ? Math.max(...teamMembers.map(m => m.id)) + 1 : 1
 
     setTeamMembers([
       ...teamMembers,
@@ -150,68 +167,86 @@ export default function ProjectDetailPage() {
         id: newId,
         name: newMember.name,
         role: newMember.role,
-        image: null,
-      },
+        image: null
+      }
     ])
 
     // Reset form
-    setNewMember({ name: "", role: "", email: "" })
+    setNewMember({ name: '', role: '', email: '' })
     setIsAddingMember(false)
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="space-y-8 animate-pulse">
-        <div className="flex items-center justify-between">
-          <div className="h-8 bg-muted rounded-md w-1/3"></div>
-          <div className="h-10 bg-muted rounded-md w-32"></div>
+      <div className='space-y-8 animate-pulse'>
+        <div className='flex items-center justify-between'>
+          <div className='h-8 bg-muted rounded-md w-1/3'></div>
+          <div className='h-10 bg-muted rounded-md w-32'></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-64 bg-muted rounded-lg md:col-span-2"></div>
-          <div className="h-64 bg-muted rounded-lg"></div>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+          <div className='h-64 bg-muted rounded-lg md:col-span-2'></div>
+          <div className='h-64 bg-muted rounded-lg'></div>
         </div>
-        <div className="h-10 bg-muted rounded-md w-64"></div>
-        <div className="h-64 bg-muted rounded-lg"></div>
+        <div className='h-10 bg-muted rounded-md w-64'></div>
+        <div className='h-64 bg-muted rounded-lg'></div>
       </div>
     )
   }
 
   if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh]">
-        <h2 className="text-2xl font-semibold mb-2">Project Not Found</h2>
-        <p className="text-muted-foreground mb-4">The project you're looking for doesn't exist or has been removed.</p>
-        <Button onClick={() => router.push("/app/projects")}>Back to Projects</Button>
+      <div className='flex flex-col items-center justify-center min-h-[50vh]'>
+        <h2 className='text-2xl font-semibold mb-2'>Project Not Found</h2>
+        <p className='text-muted-foreground mb-4'>
+          The project you're looking for doesn't exist or has been removed.
+        </p>
+        <Button onClick={() => router.push('/app/projects')}>
+          Back to Projects
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-8">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
       >
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.push("/app/projects")}>
-            <ArrowLeft className="h-5 w-5" />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700"
+            onClick={() => router.push("/app/projects")}
+          >
+            <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
           </Button>
-          <h1 className="text-3xl font-semibold tracking-tight">{project.project_title}</h1>
+          <div className='flex items-center'>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 capitalize ">
+              {project.title}
+            </h1>
+            {/* <p className="text-sm text-muted-foreground mt-1">Project #{project?.id?.slice(0, 8)}</p> */}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => router.push(`/app/projects/${projectId}/edit`)}>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary shadow-sm"
+            onClick={() => router.push(`/app/projects/${projectId}/edit`)}
+          >
             <Edit className="h-4 w-4" />
             Edit Project
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
                 <MoreHorizontal className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 Project Settings
@@ -230,106 +265,168 @@ export default function ProjectDetailPage() {
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8"
       >
-        <motion.div variants={fadeInUp} className="col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Overview</CardTitle>
-              <CardDescription>Track progress and manage tasks for {project.project_title}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Overall Progress</span>
-                  <span className="font-medium">{project.progress_percentage}%</span>
+        <motion.div variants={fadeInUp} className="col-span-1 lg:col-span-2" transition={{ duration: 0.6 }}>
+          <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 z-0"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full -ml-12 -mb-12 z-0"></div>
+
+            <CardHeader className="relative z-10 border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+                    Project Overview
+                  </CardTitle>
+                  <CardDescription className="text-base mt-1">
+                    Track progress and manage tasks for {project.project_title}
+                  </CardDescription>
                 </div>
-                <Progress value={project.progress_percentage} className="h-3" />
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary px-3 py-1">
+                    {project.progress_percentage >= 100
+                      ? "Completed"
+                      : project.progress_percentage > 0
+                        ? "In Progress"
+                        : "Planning"}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6 p-6 relative z-10">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Overall Progress</span>
+                  <span className="text-primary font-bold">{project.progress_percentage}%</span>
+                </div>
+                <div className="relative pt-1">
+                  <div className="overflow-hidden h-4 text-xs flex rounded-xl bg-primary/10">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${project.progress_percentage}%` }}
+                      transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-primary to-purple-600 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Project Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Client</p>
+                  <p className="font-medium">{project.customer_name}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Budget</p>
+                  <p className="font-medium">${project.budget || 2500}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Start Date</p>
+                  <p className="font-medium">{formatDate(project.start_date || "2025-04-06T00:00:00.000Z")}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Duration</p>
+                  <p className="font-medium">{project.duration_days || 112} days</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Priority</p>
+                  <p className="font-medium capitalize">{project.priority || "Low"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Payment Type</p>
+                  <p className="font-medium capitalize">{project.payment_type || "Fixed"}</p>
+                </div>
               </div>
 
               {/* Only show detailed stats to team members and admins */}
               {(userRole === "admin" || userRole === "team") && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
-                        <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Tasks</p>
-                        <p className="text-2xl font-semibold">{project.total_tasks}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 pt-2">
+                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
+                      <CardContent className="p-6 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
+                          <FolderKanban className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
+                          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{project.total_tasks}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
 
-                  <Card>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Completed</p>
-                        <p className="text-2xl font-semibold">{project.completed_tasks}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
+                      <CardContent className="p-6 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-md shadow-green-500/20 group-hover:shadow-green-500/40 transition-all duration-300">
+                          <CheckCircle className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                            {project.completed_tasks}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
 
-                  <Card>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900">
-                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">In Progress</p>
-                        <p className="text-2xl font-semibold">{project.total_tasks - project.completed_tasks}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
+                      <CardContent className="p-6 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 shadow-md shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300">
+                          <Clock className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                            {project.total_tasks - project.completed_tasks}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div variants={fadeInUp}>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Project Details</CardTitle>
+        <motion.div variants={fadeInUp} className="relative" transition={{ duration: 0.6, delay: 0.2 }}>
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-xl -m-1 blur-xl"></div>
+          <Card className="h-full border-none shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-900/80 relative z-10">
+            <CardHeader className="border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+                  Additional Details
+                </span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
-                <Badge
-                  className={
-                    project.progress_percentage >= 100
-                      ? statusColors["Completed"]
-                      : project.progress_percentage > 0
-                        ? statusColors["In Progress"]
-                        : statusColors["Pending"]
-                  }
-                >
-                  {project.progress_percentage >= 100
-                    ? "Completed"
-                    : project.progress_percentage > 0
-                      ? "In Progress"
-                      : "Planning"}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Created</p>
-                <p className="font-medium">March 10, 2023</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Last Updated</p>
-                <p className="font-medium">March 25, 2023</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Client</p>
-                <p className="font-medium">Acme Corporation</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pricing Tier</p>
-                <p className="font-medium">Standard</p>
+            <CardContent className="p-0">
+              <div className="pr-2">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {[
+                    { label: "Created", value: formatDate(project.created_at || "2025-04-06T09:55:43.919Z") },
+                    { label: "Last Updated", value: formatDate(project.updated_at || "2025-04-06T09:55:44.296Z") },
+                    { label: "Pricing Tier", value: project.pricing_tier || "Standard", isCapitalize: true },
+                    { label: "Visibility", value: project.visibility || "Public", isCapitalize: true },
+                    {
+                      label: "Required Skills",
+                      value: project.required_skills || "React, Next.js, TypeScript, Node.js",
+                    },
+                    { label: "Deliverables", value: project.deliverables || "Homepage design is urgent" },
+                  ].map((item, index) => (
+                    <div
+                      key={index}
+                      className="py-3 px-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-muted-foreground mb-1">{item.label}</p>
+                      <p className={`font-medium ${item.isCapitalize ? "capitalize" : ""}`}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -337,7 +434,9 @@ export default function ProjectDetailPage() {
       </motion.div>
 
       <Tabs defaultValue={userRole === "customer" ? "messages" : "tasks"} className="w-full">
-        <TabsList className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-4"} w-full max-w-md`}>
+        <TabsList
+          className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} w-full max-w-md`}
+        >
           {(userRole === "admin" || userRole === "team") && (
             <>
               <TabsTrigger value="tasks" className="flex items-center gap-2">
@@ -518,7 +617,7 @@ export default function ProjectDetailPage() {
 
             <Card>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {teamMembers.map((member, index) => (
                     <motion.div
                       key={member.id}
@@ -629,7 +728,7 @@ export default function ProjectDetailPage() {
 
           <Card>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { name: "Homepage Design.fig", type: "Design", size: "2.4 MB", date: "Mar 15, 2023" },
                   { name: "Project Requirements.pdf", type: "Document", size: "1.2 MB", date: "Mar 10, 2023" },
@@ -670,7 +769,7 @@ export default function ProjectDetailPage() {
 
       <div className="mt-8 p-4 border rounded-md bg-muted/20">
         <p className="text-sm font-medium mb-2">Current role: {userRole}</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={userRole === "admin" ? "default" : "outline"} onClick={() => switchRole("admin")}>
             Admin
           </Button>
@@ -694,8 +793,7 @@ export default function ProjectDetailPage() {
 }
 
 // Add this function at the bottom of the component, before the final return statement
-const switchRole = (role: "admin" | "team" | "customer" | "user") => {
-  localStorage.setItem("userRole", role)
-  setUserRole(role)
-}
-
+// const switchRole = (role: "admin" | "team" | "customer" | "user") => {
+//   localStorage.setItem("userRole", role)
+//   setUserRole(role)
+// }

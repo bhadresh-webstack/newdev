@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import prisma from "@/lib/prisma/client";
 
-const prisma = new PrismaClient();
 
 // ✅ **GET: Fetch All Users**
 export async function GET() {

@@ -1,7 +1,6 @@
+import prisma from "@/lib/prisma/client";
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
 
 // ✅ **GET: Fetch Single User by ID**
 export async function GET(req: Request, { params }: { params: { id: string } }) {

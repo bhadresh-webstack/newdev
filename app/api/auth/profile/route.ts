@@ -2,22 +2,15 @@ import { NextResponse } from "next/server";
 // import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma/client";
+import { cookies } from "next/headers"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"; // Ensure using env variable
 
 export async function GET(req: Request) {
   try {
     // ✅ Extract token from cookies
-    const cookieHeader = req.headers.get("cookie");
-    if (!cookieHeader) {
-      return NextResponse.json({ error: "Unauthorized: No token found" }, { status: 401 });
-    }
-
-    // ✅ Parse the cookies
-    const cookies = Object.fromEntries(
-      cookieHeader.split("; ").map((c) => c.split("="))
-    );
-    const token = cookies.auth_token; // Extract auth_token
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth_token")?.value;
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });

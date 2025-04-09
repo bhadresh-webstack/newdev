@@ -1,7 +1,9 @@
+"use client"
+
 import { create } from "zustand"
+import { apiRequest } from "@/lib/useApi" // Updated import path
 import { debounce } from "@/lib/utils" // Add debounce utility
 import { ENDPOINT } from "../api/end-point"
-import { apiRequest } from "../useApi"
 
 export type Task = {
   id: string
@@ -26,6 +28,7 @@ export type Task = {
     email?: string
   }
   priority?: string
+  due_date?: string | null
 }
 
 type TasksState = {
@@ -305,23 +308,29 @@ export const useTasksStore = create<TasksState>((set, get) => {
 
     updateTask: async (id, updates) => {
       try {
-        set((state) => ({ ...state, isLoading: true, error: null }))
+        console.log("Updating task in store:", id, updates)
 
+        // Optimistically update the UI first
+        set((state) => ({
+          ...state,
+          tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+        }))
+
+        // Then make the API call
         const { data, error } = await apiRequest<Task>("PATCH", ENDPOINT.TASK.byId(id), updates)
 
         if (error) {
+          // Revert the optimistic update if there's an error
+          await get().fetchTasks()
           throw new Error(error)
         }
 
-        // Update local state if successful
+        // If successful, ensure the state is updated with the returned data
         if (data) {
           set((state) => ({
             ...state,
             tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...data } : t)),
-            isLoading: false,
           }))
-        } else {
-          set((state) => ({ ...state, isLoading: false }))
         }
 
         return { data, error: null }
@@ -330,7 +339,6 @@ export const useTasksStore = create<TasksState>((set, get) => {
         set((state) => ({
           ...state,
           error: error.message || "Failed to update task",
-          isLoading: false,
         }))
         return { data: null, error: error.message || "Failed to update task" }
       }
@@ -469,27 +477,27 @@ export const useTasksStore = create<TasksState>((set, get) => {
 
     setProjectFilter: (filter) => {
       set((state) => ({ ...state, projectFilter: filter }))
-      get().fetchTasks()
+      debouncedFetch()
     },
 
     setStatusFilter: (filter) => {
       set((state) => ({ ...state, statusFilter: filter }))
-      get().fetchTasks()
+      debouncedFetch()
     },
 
     setGroupFilter: (filter) => {
       set((state) => ({ ...state, groupFilter: filter }))
-      get().fetchTasks()
+      debouncedFetch()
     },
 
     setAssigneeFilter: (filter) => {
       set((state) => ({ ...state, assigneeFilter: filter }))
-      get().fetchTasks()
+      debouncedFetch()
     },
 
     setSearchQuery: (query) => {
       set((state) => ({ ...state, searchQuery: query }))
-      get().fetchTasks()
+      debouncedFetch()
     },
 
     setViewMode: (mode) => set((state) => ({ ...state, viewMode: mode })),

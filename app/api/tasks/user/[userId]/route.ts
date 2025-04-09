@@ -1,19 +1,52 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import jwt from "jsonwebtoken"
+import { cookies } from "next/headers"
 
 const prisma = new PrismaClient()
+
+const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 
 // GET all tasks assigned to a specific user
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
-    const userId = params.userId
+    // Get the auth token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth_token")?.value
+
+    // If no token is provided, return unauthorized
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Verify and decode the token
+    let decodedToken
+    try {
+      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
+    } catch (error) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
+
+    const { userId: tokenUserId, role } = decodedToken
+    const requestedUserId = params.userId
+
+    // If user is a customer, they shouldn't see any tasks
+    if (role === "customer") {
+      return NextResponse.json([], { status: 200 })
+    }
+
+    // Team members can only see their own tasks
+    if (role === "team_member" && tokenUserId !== requestedUserId) {
+      return NextResponse.json({ error: "Unauthorized to view other user's tasks" }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const projectId = searchParams.get("projectId")
 
     // Check if user exists
     const userExists = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: requestedUserId },
     })
 
     if (!userExists) {
@@ -22,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
 
     // Build where clause
     const whereClause: any = {
-      assigned_to: userId,
+      assigned_to: requestedUserId,
     }
 
     if (status) whereClause.status = status

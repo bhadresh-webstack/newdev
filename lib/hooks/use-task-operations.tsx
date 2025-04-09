@@ -44,14 +44,20 @@ export function useTaskOperations() {
     [createTask],
   )
 
+  // Modify the handleUpdateTask function to update state without reloading
   const handleUpdateTask = useCallback(
     async (id: string, updates: Partial<Task>) => {
       setIsProcessing(true)
 
       try {
+        // Log the update attempt for debugging
+        console.log("Updating task:", id, updates)
+
+        // Optimistically update the UI first
         const { data, error } = await updateTask(id, updates)
 
         if (error) {
+          console.error("Error from API:", error)
           toast({
             title: "Error",
             description: error,
@@ -60,16 +66,20 @@ export function useTaskOperations() {
           return null
         }
 
-        toast({
-          title: "Success",
-          description: "Task updated successfully",
-        })
+        // Success toast only if it's not a status update (to avoid too many notifications)
+        if (!updates.status) {
+          toast({
+            title: "Success",
+            description: "Task updated successfully",
+          })
+        }
 
         return data
-      } catch (err) {
+      } catch (err: any) {
+        console.error("Exception in handleUpdateTask:", err)
         toast({
           title: "Error",
-          description: "Failed to update task",
+          description: err.message || "Failed to update task",
           variant: "destructive",
         })
         return null
@@ -77,7 +87,7 @@ export function useTaskOperations() {
         setIsProcessing(false)
       }
     },
-    [updateTask],
+    [updateTask, toast],
   )
 
   const handleDeleteTask = useCallback(

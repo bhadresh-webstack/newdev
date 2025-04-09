@@ -447,7 +447,7 @@ export default function TeamDashboard() {
                             : task.priority === "medium"
                               ? "bg-amber-500"
                               : "bg-blue-500"
-                        } 
+                        }
                         text-white
                       `}
                       >
@@ -461,7 +461,7 @@ export default function TeamDashboard() {
                             : task.status === "in-progress"
                               ? "bg-amber-500"
                               : "bg-blue-500"
-                        } 
+                        }
                         text-white
                       `}
                       >
@@ -538,4 +538,3 @@ export default function TeamDashboard() {
     </div>
   )
 }
-

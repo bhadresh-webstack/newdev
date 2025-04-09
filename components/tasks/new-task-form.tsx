@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { ENDPOINT } from "@/lib/api/end-point"
 import { apiRequest } from "@/lib/useApi"
+// import { apiRequest } from "@/lib/api-client" // Update path
+// import { ENDPOINT } from "@/lib/constants/endpoints" // Update path
 
 // Task status options with icons
 const statusOptions = [
@@ -311,7 +313,6 @@ export const NewTaskForm = memo(function NewTaskForm({
   const groupOptions =
     taskGroups.length > 0 ? taskGroups.map((group) => ({ value: group, label: group })) : defaultGroupOptions
 
-    console.log("setFormData",formData)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">

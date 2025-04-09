@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 import {
   ArrowLeft,
   FolderKanban,
@@ -17,30 +17,21 @@ import {
   Trash2,
   Plus,
   Calendar,
-  User
-} from 'lucide-react'
+  User,
+} from "lucide-react"
 
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { demoProjects, demoTasks } from '@/lib/data-utils'
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
@@ -48,25 +39,27 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import { useAuthStore } from '@/lib/stores/auth-store'
-import { useProjectsStore } from '@/lib/stores/projects-store'
-import moment from 'moment';
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuthStore } from "@/lib/stores/auth-store"
+import { useProjectsStore } from "@/lib/stores/projects-store"
+import { useTasksStore, type Task } from "@/lib/stores/tasks-store"
+// import { ENDPOINT } from "@/lib/constants/endpoints"
+// import { apiRequest } from "@/lib/api-client"
+
+// Add these imports at the top of the file
+import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
+import { useTaskOperations } from "@/lib/hooks/use-task-operations"
+import { apiRequest } from "@/lib/useApi"
+import { ENDPOINT } from "@/lib/api/end-point"
 
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 }
 
 const staggerContainer = {
@@ -74,92 +67,161 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 }
 
 // Task status icons and colors
 const statusIcons = {
-  Pending: <Circle className='h-4 w-4 text-slate-500' />,
-  'In Progress': <Clock className='h-4 w-4 text-blue-500' />,
-  Completed: <CheckCircle className='h-4 w-4 text-green-500' />
+  Pending: <Circle className="h-4 w-4 text-slate-500" />,
+  "In Progress": <Clock className="h-4 w-4 text-blue-500" />,
+  Completed: <CheckCircle className="h-4 w-4 text-green-500" />,
 }
 
 const statusColors = {
-  Pending: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100',
-  'In Progress':
-    'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-  Completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+  Pending: "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+  "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+  Completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
 }
 
-export default function ProjectDetailPage () {
+export default function ProjectDetailPage() {
   const { user } = useAuthStore()
-  const { getProjectById,isLoading } = useProjectsStore()
+  const { getProjectById, isLoading } = useProjectsStore()
+  const { fetchTasks } = useTasksStore()
 
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
-  // const [loading, setLoading] = useState(true)
   const [project, setProject] = useState(null)
-  const [projectTasks, setProjectTasks] = useState(
-    demoTasks.filter(t => t.project.id === projectId)
-  )
+  const [projectTasks, setProjectTasks] = useState<Task[]>([])
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
+
+  // Add these state variables inside the ProjectDetailPage component, after the other state declarations
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
 
   // const [userRole, setUserRole] = useState<"admin" | "team" | "customer" | "user">("user")
   const userRole = user.role
 
   const [teamMembers, setTeamMembers] = useState([
-    { id: 1, name: 'Alex Johnson', role: 'Project Manager', image: null },
-    { id: 2, name: 'Sarah Miller', role: 'UI/UX Designer', image: null },
-    { id: 3, name: 'David Chen', role: 'Frontend Developer', image: null }
+    { id: 1, name: "Alex Johnson", role: "Project Manager", image: null },
+    { id: 2, name: "Sarah Miller", role: "UI/UX Designer", image: null },
+    { id: 3, name: "David Chen", role: "Frontend Developer", image: null },
   ])
   const [isAddingMember, setIsAddingMember] = useState(false)
-  const [newMember, setNewMember] = useState({ name: '', role: '', email: '' })
+  const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
 
-
+  // Get task operations
+  const { handleUpdateTask } = useTaskOperations()
 
   const getProject = async () => {
     const { data, error } = await getProjectById(projectId)
     setProject(data)
   }
 
+  // Function to fetch tasks for this project
+  const getProjectTasks = async () => {
+    setIsLoadingTasks(true)
+    try {
+      const url = ENDPOINT.TASK.byProject(projectId)
+      const { data, error } = await apiRequest<Task[]>("GET", url)
+
+      if (error) {
+        console.error("Error fetching project tasks:", error)
+        return
+      }
+
+      if (data) {
+        setProjectTasks(data)
+      }
+    } catch (error) {
+      console.error("Error fetching project tasks:", error)
+    } finally {
+      setIsLoadingTasks(false)
+    }
+  }
+
   useEffect(() => {
     getProject()
-  }, [])
+
+    // Fetch tasks when the component mounts and when projectId changes
+    if (projectId) {
+      getProjectTasks()
+    }
+  }, [projectId])
+
   // Get initials for avatar
   const getInitials = (name: string) => {
-    if (!name) return 'U'
+    if (!name) return "U"
     return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
       .toUpperCase()
   }
 
   // Format date to readable format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date)
   }
 
-  // Navigate to task details
-  const handleTaskClick = (taskId: string) => {
-    router.push(`/app/tasks/${taskId}`)
+  // Replace the existing handleTaskClick function with this one
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task)
+    setIsTaskDetailOpen(true)
+  }
+
+  // Add this function to handle task status changes
+  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+    // Optimistically update the UI first
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask({
+        ...selectedTask,
+        status: newStatus,
+      })
+    }
+
+    // Update the task in the projectTasks array
+    setProjectTasks((prevTasks) =>
+      prevTasks.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)),
+    )
+
+    // Then make the API call
+    await handleUpdateTask(taskId, { status: newStatus })
+
+    // Refresh the task list to ensure we have the latest data
+    getProjectTasks()
+  }
+
+  // Add a function to handle task updates from the detail sheet
+  const handleTaskUpdate = async (updatedTask: Task) => {
+    // Update the task in the projectTasks array
+    setProjectTasks((prevTasks) => prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+
+    // Update the selected task if it's currently open
+    if (selectedTask && selectedTask.id === updatedTask.id) {
+      setSelectedTask(updatedTask)
+    }
+  }
+
+  // Add this function to get related tasks
+  const getRelatedTasks = (taskId: string, projectId: string) => {
+    return projectTasks.filter((t) => t.project_id === projectId && t.id !== taskId)
   }
 
   const handleAddMember = () => {
     if (!newMember.name || !newMember.role) return
 
-    const newId =
-      teamMembers.length > 0 ? Math.max(...teamMembers.map(m => m.id)) + 1 : 1
+    const newId = teamMembers.length > 0 ? Math.max(...teamMembers.map((m) => m.id)) + 1 : 1
 
     setTeamMembers([
       ...teamMembers,
@@ -167,42 +229,38 @@ export default function ProjectDetailPage () {
         id: newId,
         name: newMember.name,
         role: newMember.role,
-        image: null
-      }
+        image: null,
+      },
     ])
 
     // Reset form
-    setNewMember({ name: '', role: '', email: '' })
+    setNewMember({ name: "", role: "", email: "" })
     setIsAddingMember(false)
   }
 
   if (isLoading) {
     return (
-      <div className='space-y-8 animate-pulse'>
-        <div className='flex items-center justify-between'>
-          <div className='h-8 bg-muted rounded-md w-1/3'></div>
-          <div className='h-10 bg-muted rounded-md w-32'></div>
+      <div className="space-y-8 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-8 bg-muted rounded-md w-1/3"></div>
+          <div className="h-10 bg-muted rounded-md w-32"></div>
         </div>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-          <div className='h-64 bg-muted rounded-lg md:col-span-2'></div>
-          <div className='h-64 bg-muted rounded-lg'></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-64 bg-muted rounded-lg md:col-span-2"></div>
+          <div className="h-64 bg-muted rounded-lg"></div>
         </div>
-        <div className='h-10 bg-muted rounded-md w-64'></div>
-        <div className='h-64 bg-muted rounded-lg'></div>
+        <div className="h-10 bg-muted rounded-md w-64"></div>
+        <div className="h-64 bg-muted rounded-lg"></div>
       </div>
     )
   }
 
   if (!project) {
     return (
-      <div className='flex flex-col items-center justify-center min-h-[50vh]'>
-        <h2 className='text-2xl font-semibold mb-2'>Project Not Found</h2>
-        <p className='text-muted-foreground mb-4'>
-          The project you're looking for doesn't exist or has been removed.
-        </p>
-        <Button onClick={() => router.push('/app/projects')}>
-          Back to Projects
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <h2 className="text-2xl font-semibold mb-2">Project Not Found</h2>
+        <p className="text-muted-foreground mb-4">The project you're looking for doesn't exist or has been removed.</p>
+        <Button onClick={() => router.push("/app/projects")}>Back to Projects</Button>
       </div>
     )
   }
@@ -224,7 +282,7 @@ export default function ProjectDetailPage () {
           >
             <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
           </Button>
-          <div className='flex items-center'>
+          <div className="flex items-center">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 capitalize ">
               {project.title}
             </h1>
@@ -469,75 +527,260 @@ export default function ProjectDetailPage () {
               </Button>
             </div>
 
-            <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
-              {projectTasks.length > 0 ? (
-                projectTasks.map((task, index) => (
-                  <motion.div
-                    key={task.id}
-                    variants={fadeInUp}
-                    onClick={() => handleTaskClick(task.id)}
-                    className="cursor-pointer"
-                  >
-                    <Card className="hover:shadow-md transition-all">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1">
-                              {statusIcons[task.status] || <Circle className="h-4 w-4 text-slate-500" />}
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{task.title}</CardTitle>
-                              <CardDescription className="mt-1 line-clamp-2">{task.description}</CardDescription>
-                            </div>
-                          </div>
-                          <Badge className={statusColors[task.status] || "bg-slate-100 text-slate-800"}>
-                            {task.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardFooter className="flex justify-between pt-4 border-t mt-2">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>Updated {formatDate(task.updated_at)}</span>
-                        </div>
-                        {task.assigned_to_profile && (
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm">Assigned to:</p>
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={task.assigned_to_profile.profile_image || undefined}
-                                alt={`${task.assigned_to_profile.first_name} ${task.assigned_to_profile.last_name}`}
-                              />
-                              <AvatarFallback>
-                                {getInitials(
-                                  `${task.assigned_to_profile.first_name} ${task.assigned_to_profile.last_name}`,
+            {isLoadingTasks ? (
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((_, index) => (
+                  <div key={index} className="h-24 bg-muted rounded-lg"></div>
+                ))}
+              </div>
+            ) : (
+              <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
+                {projectTasks.length > 0 ? (
+                  projectTasks.map((task, index) => (
+                    <motion.div
+                      key={task.id}
+                      variants={fadeInUp}
+                      onClick={() => handleTaskClick(task)}
+                      className="cursor-pointer"
+                    >
+                      <Card className="hover:shadow-md transition-all">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1">
+                                {statusIcons[task.status] || <Circle className="h-4 w-4 text-slate-500" />}
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{task.title}</CardTitle>
+                                <CardDescription className="mt-1 line-clamp-2">{task.description}</CardDescription>
+                                {task.due_date && (
+                                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                    {new Date(task.due_date).toLocaleDateString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </div>
                                 )}
-                              </AvatarFallback>
-                            </Avatar>
+                              </div>
+                            </div>
+                            <Badge className={statusColors[task.status] || "bg-slate-100 text-slate-800"}>
+                              {task.status}
+                            </Badge>
                           </div>
-                        )}
-                      </CardFooter>
-                    </Card>
-                  </motion.div>
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-10">
-                    <div className="rounded-full bg-muted p-3 mb-4">
-                      <CheckCircle className="h-6 w-6 text-muted-foreground" />
+                        </CardHeader>
+                        <CardFooter className="flex justify-between pt-4 border-t mt-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>Updated {formatDate(task.updated_at || task.created_at)}</span>
+                          </div>
+                          {task.assignee && (
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm">Assigned to:</p>
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage
+                                  src={task.assignee.profile_image || undefined}
+                                  alt={task.assignee.user_name}
+                                />
+                                <AvatarFallback>{getInitials(task.assignee.user_name)}</AvatarFallback>
+                              </Avatar>
+                            </div>
+                          )}
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-10">
+                      <div className="rounded-full bg-muted p-3 mb-4">
+                        <CheckCircle className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">No tasks found</h3>
+                      <p className="text-muted-foreground text-center max-w-md">
+                        This project doesn't have any tasks yet. Create your first task to get started.
+                      </p>
+                      <Button className="mt-4 gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Task
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </motion.div>
+            )}
+          </TabsContent>
+        )}
+
+        {(userRole === "admin" || userRole === "team") && (
+          <TabsContent value="tasks" className="mt-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Project Tasks</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage and track tasks for this project</p>
+              </div>
+              <Button className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
+                <Plus className="h-4 w-4" />
+                Add Task
+              </Button>
+            </div>
+
+            {isLoadingTasks ? (
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((_, index) => (
+                  <div key={index} className="h-24 bg-muted rounded-lg"></div>
+                ))}
+              </div>
+            ) : (
+              <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
+                {projectTasks.length > 0 ? (
+                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-border/50 shadow-sm overflow-hidden">
+                    <div className="grid grid-cols-12 gap-4 p-4 text-sm font-medium text-muted-foreground border-b">
+                      <div className="col-span-6 md:col-span-5">Task</div>
+                      <div className="col-span-3 md:col-span-2 text-center">Status</div>
+                      <div className="hidden md:block md:col-span-2">Due Date</div>
+                      <div className="col-span-3 md:col-span-3 text-right">Assigned To</div>
                     </div>
-                    <h3 className="text-lg font-medium mb-2">No tasks found</h3>
-                    <p className="text-muted-foreground text-center max-w-md">
-                      This project doesn't have any tasks yet. Create your first task to get started.
-                    </p>
-                    <Button className="mt-4 gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add Task
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
+
+                    <div className="divide-y divide-border/50">
+                      {projectTasks.map((task, index) => (
+                        <motion.div
+                          key={task.id}
+                          variants={fadeInUp}
+                          className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <div className="grid grid-cols-12 gap-4 p-4 items-center relative">
+                            {/* Priority indicator */}
+                            {task.priority === "High" && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
+                            )}
+                            {task.priority === "Medium" && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                            )}
+
+                            {/* Task title and description */}
+                            <div className="col-span-6 md:col-span-5 flex items-start gap-3">
+                              <div className="mt-1 flex-shrink-0">
+                                {task.status === "Completed" ? (
+                                  <CheckCircle className="h-5 w-5 text-green-500" />
+                                ) : task.status === "In Progress" ? (
+                                  <Clock className="h-5 w-5 text-blue-500" />
+                                ) : (
+                                  <Circle className="h-5 w-5 text-slate-400" />
+                                )}
+                              </div>
+                              <div>
+                                <h3 className="font-medium text-base group-hover:text-primary transition-colors line-clamp-1">
+                                  {task.title}
+                                </h3>
+                                <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">{task.description}</p>
+                                {task.due_date && (
+                                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                    {new Date(task.due_date).toLocaleDateString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs px-1.5 py-0 border-muted-foreground/30 bg-background"
+                                  >
+                                    {task.task_group || "Backlog"}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    Created {new Date(task.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="col-span-3 md:col-span-2 flex justify-center">
+                              <Badge
+                                className={`${
+                                  task.status === "Completed"
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                    : task.status === "In Progress"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                                      : task.status === "Blocked"
+                                        ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+                                        : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                                } px-2.5 py-0.5 font-medium`}
+                              >
+                                {task.status}
+                              </Badge>
+                            </div>
+
+                            {/* Due Date */}
+                            <div className="hidden md:flex md:col-span-2 items-center text-sm">
+                              {task.due_date ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No due date</span>
+                              )}
+                            </div>
+
+                            {/* Assigned To */}
+                            <div className="col-span-3 md:col-span-3 flex items-center justify-end gap-2">
+                              {task.assignee ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="hidden md:block text-sm text-right">
+                                    <p className="font-medium line-clamp-1">{task.assignee.user_name}</p>
+                                  </div>
+                                  <Avatar className="h-8 w-8 border-2 border-background">
+                                    <AvatarImage
+                                      src={task.assignee.profile_image || undefined}
+                                      alt={task.assignee.user_name}
+                                    />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                                      {getInitials(task.assignee.user_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                              ) : (
+                                <Badge variant="outline" className="text-xs bg-slate-100 dark:bg-slate-800">
+                                  Unassigned
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Action button that appears on hover */}
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Card className="border border-dashed bg-background/50">
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <div className="rounded-full bg-primary/10 p-4 mb-4">
+                        <CheckCircle className="h-8 w-8 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-medium mb-2">No tasks found</h3>
+                      <p className="text-muted-foreground text-center max-w-md mb-6">
+                        This project doesn't have any tasks yet. Create your first task to get started.
+                      </p>
+                      <Button className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
+                        <Plus className="h-4 w-4" />
+                        Create First Task
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </motion.div>
+            )}
           </TabsContent>
         )}
 
@@ -766,34 +1009,17 @@ export default function ProjectDetailPage () {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-8 p-4 border rounded-md bg-muted/20">
-        <p className="text-sm font-medium mb-2">Current role: {userRole}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={userRole === "admin" ? "default" : "outline"} onClick={() => switchRole("admin")}>
-            Admin
-          </Button>
-          <Button size="sm" variant={userRole === "team" ? "default" : "outline"} onClick={() => switchRole("team")}>
-            Team
-          </Button>
-          <Button
-            size="sm"
-            variant={userRole === "customer" ? "default" : "outline"}
-            onClick={() => switchRole("customer")}
-          >
-            Customer
-          </Button>
-          <Button size="sm" variant={userRole === "user" ? "default" : "outline"} onClick={() => switchRole("user")}>
-            User
-          </Button>
-        </div>
-      </div>
+      {/* Add the TaskDetailSheet component at the end of the return statement, just before the closing </div> */}
+      {selectedTask && (
+        <TaskDetailSheet
+          task={selectedTask}
+          isOpen={isTaskDetailOpen}
+          onClose={() => setIsTaskDetailOpen(false)}
+          onStatusChange={handleTaskStatusChange}
+          relatedTasks={getRelatedTasks(selectedTask.id, selectedTask.project_id)}
+          handleUpdateTask={handleUpdateTask}
+        />
+      )}
     </div>
   )
 }
-
-// Add this function at the bottom of the component, before the final return statement
-// const switchRole = (role: "admin" | "team" | "customer" | "user") => {
-//   localStorage.setItem("userRole", role)
-//   setUserRole(role)
-// }

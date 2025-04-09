@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { Clock, Search, ListIcon, LayoutGrid, Plus, GripVertical, ChevronDown, Filter } from "lucide-react"
+import { Clock, Search, ListIcon, LayoutGrid, Plus, GripVertical, ChevronDown, Filter, Calendar } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,7 @@ import { useTaskFilters } from "@/lib/hooks/use-task-filters"
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
 // Add the import for the NewTaskForm component
 import { NewTaskForm } from "@/components/tasks/new-task-form"
+import { useAuthStore } from "@/lib/stores/auth-store"
 
 // Animation variants
 const fadeInUp = {
@@ -46,6 +47,8 @@ const staggerContainer = {
 const statusDots = {
   Pending: <div className="h-2.5 w-2.5 rounded-full bg-slate-500 mr-2"></div>,
   "In Progress": <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>,
+  QA: <div className="h-2.5 w-2.5 rounded-full bg-purple-500 mr-2"></div>,
+  Open: <div className="h-2.5 w-2.5 rounded-full bg-slate-500 mr-2"></div>,
   Completed: <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>,
   Blocked: <div className="h-2.5 w-2.5 rounded-full bg-red-500 mr-2"></div>,
 }
@@ -56,6 +59,8 @@ const statusColors = {
     "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600",
   "In Progress":
     "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800",
+  QA: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100 hover:bg-purple-200 dark:hover:bg-purple-800",
+  Open: "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600",
   Completed:
     "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800",
   Blocked: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800",
@@ -86,6 +91,9 @@ export default function TasksPage() {
   const dragOverItem = useRef(null)
 
   // Get tasks and actions from the store
+  const {user} = useAuthStore()
+const user_role = user.role
+  console.log("useruser",user_role)
   const { tasks, isLoading, error, fetchTasks, taskGroups: availableTaskGroups } = useTasksStore()
 
   // Get task operations
@@ -113,7 +121,7 @@ export default function TasksPage() {
 
     // Set loading state and fetch tasks
     fetchTasks()
-  }, [fetchTasks])
+  }, [fetchTasks, searchParams])
 
   // Handle URL parameter changes
   useEffect(() => {
@@ -260,9 +268,22 @@ export default function TasksPage() {
   // Add this function inside the TasksPage component, before the return statement
   const handleTaskStatusChange = useCallback(
     async (taskId: string, newStatus: string) => {
+      // Optimistically update the UI first
+      const taskToUpdate = tasks.find((t) => t.id === taskId)
+      if (taskToUpdate) {
+        // Update the selected task if it's open in the detail view
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus,
+          })
+        }
+      }
+
+      // Then make the API call without reloading the page
       await handleUpdateTask(taskId, { status: newStatus })
     },
-    [handleUpdateTask],
+    [handleUpdateTask, tasks, selectedTask],
   )
 
   // Add this function inside the TasksPage component, before the return statement
@@ -275,7 +296,7 @@ export default function TasksPage() {
 
   return (
     <>
-      {isLoading ? (
+      {isLoading && tasks.length === 0 ? (
         <div className="space-y-8 animate-pulse">
           <div className="h-8 bg-muted rounded-md w-2/3"></div>
           <div className="h-4 bg-muted rounded-md w-1/2"></div>
@@ -317,9 +338,9 @@ export default function TasksPage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <Button className="gap-1.5" onClick={() => setIsNewTaskDialogOpen(true)}>
+              {user_role==="admin"&&<Button className="gap-1.5" onClick={() => setIsNewTaskDialogOpen(true)}>
                 <Plus className="h-4 w-4" /> New Task
-              </Button>
+              </Button>}
             </motion.div>
           </div>
 
@@ -425,6 +446,8 @@ export default function TasksPage() {
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="QA">QA</SelectItem>
+                      <SelectItem value="Open">Open</SelectItem>
                       <SelectItem value="Completed">Completed</SelectItem>
                       <SelectItem value="Blocked">Blocked</SelectItem>
                     </SelectContent>
@@ -521,6 +544,20 @@ export default function TasksPage() {
                                 In Progress
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                className={task.status === "QA" ? "bg-accent" : ""}
+                                onClick={() => handleTaskStatusChange(task.id, "QA")}
+                              >
+                                <div className="h-2.5 w-2.5 rounded-full bg-purple-500 mr-2"></div>
+                                QA
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className={task.status === "Open" ? "bg-accent" : ""}
+                                onClick={() => handleTaskStatusChange(task.id, "Open")}
+                              >
+                                <div className="h-2.5 w-2.5 rounded-full bg-slate-500 mr-2"></div>
+                                Open
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className={task.status === "Completed" ? "bg-accent" : ""}
                                 onClick={() => handleTaskStatusChange(task.id, "Completed")}
                               >
@@ -541,6 +578,15 @@ export default function TasksPage() {
                         <div className="mb-2"></div>
 
                         <h3 className="font-semibold text-base mb-4 line-clamp-1">{task.title}</h3>
+                        {task.due_date && (
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                            {new Date(task.due_date).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between pt-3 border-t border-border">
                           <div className="text-xs text-muted-foreground">
@@ -592,10 +638,10 @@ export default function TasksPage() {
                         ? "Try adjusting your filters or search query"
                         : "There are no tasks to display"}
                     </p>
-                    <Button className="mt-6" onClick={() => setIsNewTaskDialogOpen(true)}>
+                    {user_role === "admin" &&<Button className="mt-6" onClick={() => setIsNewTaskDialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Task
-                    </Button>
+                    </Button>}
                   </div>
                 </motion.div>
               )}
@@ -717,6 +763,7 @@ export default function TasksPage() {
               onClose={() => setIsTaskDetailOpen(false)}
               onStatusChange={handleTaskStatusChange}
               relatedTasks={getRelatedTasks(selectedTask.id, selectedTask.project_id)}
+              handleUpdateTask={handleUpdateTask}
             />
           )}
 

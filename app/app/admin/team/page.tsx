@@ -211,7 +211,7 @@ export default function TeamPage() {
                 onChange={handleSearch}
               />
             </div>
-            <AddTeamMemberForm />
+            <AddTeamMemberForm/>
           </div>
         </div>
 

@@ -81,6 +81,7 @@ model Task {
   status      String
   task_group  String
   priority    String    @default("Medium")
+  due_date    DateTime?
   created_at  DateTime  @default(now())
   updated_at  DateTime?
 

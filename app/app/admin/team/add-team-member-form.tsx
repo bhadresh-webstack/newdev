@@ -30,7 +30,7 @@ type FormData = {
 }
 
 export function AddTeamMemberForm() {
-  const { createTeamMember, getAllTeamMember } = useTeamMemberStore()
+  const { createTeamMember, getAllTeamMember,teamMemberList } = useTeamMemberStore()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -61,6 +61,7 @@ export function AddTeamMemberForm() {
     setValue(name, value, { shouldValidate: true })
   }
 
+  console.log("teamMemberList",teamMemberList)
   const onSubmit = async (formData: FormData) => {
     try {
       setIsSubmitting(true)

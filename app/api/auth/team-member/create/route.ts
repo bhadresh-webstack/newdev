@@ -41,6 +41,14 @@ export async function POST (req: Request) {
         { status: 400 }
       )
     }
+    const existingUserName = await prisma.user.findUnique({ where: { user_name } })
+    if(existingUserName){
+      return NextResponse.json(
+        { error: 'Full name is already in use' },
+        { status: 400 }
+      )
+    }
+
 
     // ✅ Hash password before saving
     const hashedPassword = await bcrypt.hash(password, 10)

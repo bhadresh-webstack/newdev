@@ -4,9 +4,9 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 // GET a specific task by ID
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const taskId = params.id
+    const { id: taskId } = await params
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PATCH update a specific task
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const taskId = params.id
+    const { id: taskId } = await params
     const body = await request.json()
 
     // Check if task exists
@@ -101,9 +101,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE a specific task
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const taskId = params.id
+    const { id: taskId } = await params
 
     // Check if task exists and get its details
     const existingTask = await prisma.task.findUnique({

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
@@ -9,24 +8,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 // GET all projects with role-based filtering
 export async function GET(request: NextRequest) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { userId, role } = auth
     const { searchParams } = new URL(request.url)
 
     // Get optional filters
@@ -101,24 +90,14 @@ export async function GET(request: NextRequest) {
 // POST create a new project
 export async function POST(request: NextRequest) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string; email: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role, email } = decodedToken
+    const { userId, role, email } = auth
 
     // Only admin and customers can create projects
     if (role !== "admin" && role !== "customer") {

@@ -1,32 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 
 // GET project statistics
 export async function GET(request: NextRequest) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { userId, role } = auth
 
     // Only admin and team members can access statistics
     if (role !== "admin" && role !== "team_member") {

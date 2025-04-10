@@ -1,40 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
-
 // GET all tasks for a specific project
-export async function GET(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { userId, role } = auth
 
     // If user is a customer, they shouldn't see any tasks
     if (role === "customer") {
       return NextResponse.json([], { status: 200 })
     }
 
-    const projectId = params.projectId
+    // Await the params object to get projectId
+    const { projectId } = await params
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const taskGroup = searchParams.get("taskGroup")
@@ -89,9 +77,17 @@ export async function GET(request: NextRequest, { params }: { params: { projectI
 }
 
 // POST create multiple tasks for a project
-export async function POST(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
-    const projectId = params.projectId
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
+    // Await the params object to get projectId
+    const { projectId } = await params
     const body = await request.json()
     const { tasks } = body
 

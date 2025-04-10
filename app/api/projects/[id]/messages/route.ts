@@ -1,34 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 
 // GET all messages for a specific project
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const projectId = params.id
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
-
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { id: projectId } = await params
+    const { userId, role } = auth
 
     // Check if project exists
     const project = await prisma.project.findUnique({
@@ -89,6 +76,31 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
     })
 
+    // If the user is a customer, modify the response to hide team member and admin names
+    if (role === "customer") {
+      const modifiedMessages = messages.map((message) => {
+        // If the sender is not the customer (i.e., admin or team member), replace name with "webstack"
+        if (
+          message.sender &&
+          message.sender.id !== userId &&
+          (message.sender.role === "admin" || message.sender.role === "team_member")
+        ) {
+          return {
+            ...message,
+            sender: {
+              ...message.sender,
+              user_name: "webstack",
+              // Keep the profile image and other details
+            },
+          }
+        }
+        return message
+      })
+
+      return NextResponse.json({ messages: modifiedMessages }, { status: 200 })
+    }
+
+    // For admin and team members, return the original messages with full details
     return NextResponse.json({ messages }, { status: 200 })
   } catch (error) {
     console.error("Error fetching project messages:", error)
@@ -97,29 +109,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // POST send a message in a project
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const projectId = params.id
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
-
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { id: projectId } = await params
     const body = await request.json()
+    const { userId, role } = auth
 
     // Check if project exists
     const project = await prisma.project.findUnique({
@@ -188,6 +189,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         },
       },
     })
+
+    // If the user is a customer, modify the response to hide team member and admin names
+    if (role === "customer") {
+      if (
+        newMessage.sender &&
+        newMessage.sender.id !== userId &&
+        (newMessage.sender.role === "admin" || newMessage.sender.role === "team_member")
+      ) {
+        const modifiedMessage = {
+          ...newMessage,
+          sender: {
+            ...newMessage.sender,
+            user_name: "webstack",
+          },
+        }
+        return NextResponse.json(modifiedMessage, { status: 201 })
+      }
+    }
 
     return NextResponse.json(newMessage, { status: 201 })
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useTasksStore, type Task } from "@/lib/stores/tasks-store" // Update path
+import { useTasksStore, type Task } from "@/lib/stores/tasks-store"
 import { toast } from "@/hooks/use-toast"
 
 export function useTaskOperations() {

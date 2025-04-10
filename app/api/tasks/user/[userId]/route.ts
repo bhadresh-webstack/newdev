@@ -1,34 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
-
 // GET all tasks assigned to a specific user
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId: tokenUserId, role } = decodedToken
-    const requestedUserId = params.userId
+    // Await the params object to get userId
+    const { userId: requestedUserId } = await params
+    const { userId: tokenUserId, role } = auth
 
     // If user is a customer, they shouldn't see any tasks
     if (role === "customer") {
@@ -88,9 +76,17 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
 }
 
 // PATCH update task assignments for a user
-export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   try {
-    const userId = params.userId
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
+    // Await the params object to get userId
+    const { userId } = await params
     const body = await request.json()
     const { taskIds, action } = body
 

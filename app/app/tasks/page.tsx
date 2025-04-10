@@ -23,9 +23,8 @@ import { useTaskFilters } from "@/lib/hooks/use-task-filters"
 
 // Add the import for the TaskDetailSheet component at the top of the file
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
-// Add the import for the NewTaskForm component
+// Update the import for the NewTaskForm component
 import { NewTaskForm } from "@/components/tasks/new-task-form"
-import { useAuthStore } from "@/lib/stores/auth-store"
 
 // Animation variants
 const fadeInUp = {
@@ -91,9 +90,6 @@ export default function TasksPage() {
   const dragOverItem = useRef(null)
 
   // Get tasks and actions from the store
-  const {user} = useAuthStore()
-const user_role = user.role
-  console.log("useruser",user_role)
   const { tasks, isLoading, error, fetchTasks, taskGroups: availableTaskGroups } = useTasksStore()
 
   // Get task operations
@@ -173,7 +169,7 @@ const user_role = user.role
       }
 
       // Update the URL
-      router.push(`/app/tasks?${params.toString()}`, { scroll: false })
+      router.push(`/tasks?${params.toString()}`, { scroll: false })
     },
     [searchParams, router, actions],
   )
@@ -338,9 +334,9 @@ const user_role = user.role
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              {user_role==="admin"&&<Button className="gap-1.5" onClick={() => setIsNewTaskDialogOpen(true)}>
+              <Button className="gap-1.5" onClick={() => setIsNewTaskDialogOpen(true)}>
                 <Plus className="h-4 w-4" /> New Task
-              </Button>}
+              </Button>
             </motion.div>
           </div>
 
@@ -638,10 +634,10 @@ const user_role = user.role
                         ? "Try adjusting your filters or search query"
                         : "There are no tasks to display"}
                     </p>
-                    {user_role === "admin" &&<Button className="mt-6" onClick={() => setIsNewTaskDialogOpen(true)}>
+                    <Button className="mt-6" onClick={() => setIsNewTaskDialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Task
-                    </Button>}
+                    </Button>
                   </div>
                 </motion.div>
               )}

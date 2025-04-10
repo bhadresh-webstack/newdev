@@ -1,11 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 
 // GET a specific task by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const { id: taskId } = await params
 
     const task = await prisma.task.findUnique({
@@ -47,6 +55,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // PATCH update a specific task
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const { id: taskId } = await params
     const body = await request.json()
 
@@ -103,6 +118,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 // DELETE a specific task
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const { id: taskId } = await params
 
     // Check if task exists and get its details

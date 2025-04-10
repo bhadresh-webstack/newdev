@@ -1,34 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 
 // GET a specific project by ID
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const projectId = params.id
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
-
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    // Await the params object to get id
+    const { id: projectId } = await params
+    const { userId, role } = auth
 
     // Check if project exists
     const project = await prisma.project.findUnique({
@@ -102,28 +91,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PATCH update a specific project
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const projectId = params.id
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
-
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    // Await the params object to get id
+    const { id: projectId } = await params
+    const { userId, role } = auth
     const body = await request.json()
 
     // Check if project exists
@@ -191,28 +170,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE a specific project
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const projectId = params.id
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
-
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    // Await the params object to get id
+    const { id: projectId } = await params
+    const { userId, role } = auth
 
     // Check if project exists
     const project = await prisma.project.findUnique({

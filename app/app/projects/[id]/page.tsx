@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   DropdownMenu,
@@ -44,17 +44,19 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useProjectsStore, type Project } from "@/lib/stores/projects-store"
+import { useTasksStore } from "@/lib/stores/tasks-store"
 import { useAuthStore } from "@/lib/stores/auth-store"
-import { useProjectsStore } from "@/lib/stores/projects-store"
-import { useTasksStore, type Task } from "@/lib/stores/tasks-store"
+import type { Task as TaskType } from "@/lib/stores/tasks-store"
+import { apiRequest } from "@/lib/useApi"
 // import { ENDPOINT } from "@/lib/constants/endpoints"
-// import { apiRequest } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
 // Add these imports at the top of the file
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
 import { useTaskOperations } from "@/lib/hooks/use-task-operations"
-import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "@/lib/api/end-point"
+import { NewTaskForm } from "@/components/tasks/new-task-form"
 
 // Animation variants
 const fadeInUp = {
@@ -87,70 +89,252 @@ const statusColors = {
 
 export default function ProjectDetailPage() {
   const { user } = useAuthStore()
-  const { getProjectById, isLoading } = useProjectsStore()
-  const { fetchTasks } = useTasksStore()
-
+  const { toast } = useToast()
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
-  const [project, setProject] = useState(null)
-  const [projectTasks, setProjectTasks] = useState<Task[]>([])
-  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
-
-  // Add these state variables inside the ProjectDetailPage component, after the other state declarations
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
-
-  // const [userRole, setUserRole] = useState<"admin" | "team" | "customer" | "user">("user")
-  const userRole = user.role
-
-  const [teamMembers, setTeamMembers] = useState([
-    { id: 1, name: "Alex Johnson", role: "Project Manager", image: null },
-    { id: 2, name: "Sarah Miller", role: "UI/UX Designer", image: null },
-    { id: 3, name: "David Chen", role: "Frontend Developer", image: null },
-  ])
-  const [isAddingMember, setIsAddingMember] = useState(false)
-  const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
-
-  // Get task operations
+  // Get functions from stores
+  const { getProjectById, updateProject, deleteProject } = useProjectsStore()
+  const { fetchTasks, fetchTaskGroups, fetchStatusSummary } = useTasksStore()
   const { handleUpdateTask } = useTaskOperations()
 
+  const [project, setProject] = useState<Project | null>(null)
+  const [projectTasks, setProjectTasks] = useState<TaskType[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false)
+
+  // Add these state variables inside the ProjectDetailPage component, after the other state declarations
+  const [selectedTask, setSelectedTask] = useState<TaskType | null>(null)
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+  const [isNewTaskFormOpen, setIsNewTaskFormOpen] = useState(false)
+
+  const userRole = user?.role || "user"
+
+  const [teamMembers, setTeamMembers] = useState([])
+  const [messages, setMessages] = useState([])
+  const [files, setFiles] = useState([])
+  const [newMessage, setNewMessage] = useState("")
+  const [isAddingMember, setIsAddingMember] = useState(false)
+  const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Fetch project data
   const getProject = async () => {
-    const { data, error } = await getProjectById(projectId)
-    setProject(data)
+    setIsLoading(true)
+    try {
+      const { data, error } = await getProjectById(projectId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (data) {
+        setProject(data)
+      }
+    } catch (error) {
+      console.error("Error fetching project:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load project details",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Function to fetch tasks for this project
   const getProjectTasks = async () => {
     setIsLoadingTasks(true)
     try {
+      // Use the byProject endpoint directly to get tasks for this specific project
       const url = ENDPOINT.TASK.byProject(projectId)
-      const { data, error } = await apiRequest<Task[]>("GET", url)
+      const { data, error } = await apiRequest<TaskType[]>("GET", url)
 
       if (error) {
         console.error("Error fetching project tasks:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load project tasks",
+          variant: "destructive",
+        })
         return
       }
 
+      // Set the tasks directly from the response
       if (data) {
+        console.log("Project tasks loaded:", data)
         setProjectTasks(data)
+      } else {
+        setProjectTasks([])
       }
     } catch (error) {
       console.error("Error fetching project tasks:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load project tasks",
+        variant: "destructive",
+      })
     } finally {
       setIsLoadingTasks(false)
     }
   }
 
-  useEffect(() => {
-    getProject()
+  // Function to fetch team members
+  const getTeamMembers = async () => {
+    setIsLoadingTeam(true)
+    try {
+      // Replace with your actual endpoint for team members
+      const { data, error } = await apiRequest("GET", ENDPOINT.AUTH.allTeamMember)
 
-    // Fetch tasks when the component mounts and when projectId changes
-    if (projectId) {
-      getProjectTasks()
+      if (error) {
+        console.error("Error fetching team members:", error)
+        return
+      }
+
+      if (data?.team_members) {
+        setTeamMembers(data.team_members)
+      }
+    } catch (error) {
+      console.error("Error fetching team members:", error)
+    } finally {
+      setIsLoadingTeam(false)
     }
-  }, [projectId])
+  }
+
+  // Function to fetch project messages
+  const getProjectMessages = async () => {
+    setIsLoadingMessages(true)
+    try {
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.messages(projectId))
+
+      if (error) {
+        console.error("Error fetching project messages:", error)
+        return
+      }
+
+      if (data?.messages) {
+        setMessages(data.messages)
+      }
+    } catch (error) {
+      console.error("Error fetching project messages:", error)
+    } finally {
+      setIsLoadingMessages(false)
+    }
+  }
+
+  // Function to fetch project files
+  const getProjectFiles = async () => {
+    setIsLoadingFiles(true)
+    try {
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.files(projectId))
+
+      if (error) {
+        console.error("Error fetching project files:", error)
+        return
+      }
+
+      if (data?.files) {
+        setFiles(data.files)
+      }
+    } catch (error) {
+      console.error("Error fetching project files:", error)
+    } finally {
+      setIsLoadingFiles(false)
+    }
+  }
+
+  // Function to send a message
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return
+
+    try {
+      const { data, error } = await apiRequest("POST", ENDPOINT.PROJECT.messages(projectId), {
+        message: newMessage,
+        receiver_id: project?.customer_id, // Default to customer, adjust as needed
+      })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Add the new message to the list
+      if (data) {
+        setMessages((prev) => [...prev, data])
+        setNewMessage("")
+      }
+    } catch (error) {
+      console.error("Error sending message:", error)
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Function to delete project
+  const handleDeleteProject = async () => {
+    setIsDeleting(true)
+    try {
+      const { error } = await deleteProject(projectId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Project deleted successfully",
+      })
+
+      // Navigate back to projects page
+      router.push("/projects")
+    } catch (error) {
+      console.error("Error deleting project:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // Load data when component mounts
+  useEffect(() => {
+    if (projectId) {
+      getProject()
+      getProjectTasks()
+
+      if (userRole === "admin" || userRole === "team") {
+        getTeamMembers()
+      }
+
+      getProjectMessages()
+      getProjectFiles()
+    }
+  }, [projectId, userRole])
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -164,6 +348,8 @@ export default function ProjectDetailPage() {
 
   // Format date to readable format
   const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A"
+
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
@@ -175,7 +361,7 @@ export default function ProjectDetailPage() {
   }
 
   // Replace the existing handleTaskClick function with this one
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = (task: TaskType) => {
     setSelectedTask(task)
     setIsTaskDetailOpen(true)
   }
@@ -203,7 +389,7 @@ export default function ProjectDetailPage() {
   }
 
   // Add a function to handle task updates from the detail sheet
-  const handleTaskUpdate = async (updatedTask: Task) => {
+  const handleTaskUpdate = async (updatedTask: TaskType) => {
     // Update the task in the projectTasks array
     setProjectTasks((prevTasks) => prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
 
@@ -218,24 +404,116 @@ export default function ProjectDetailPage() {
     return projectTasks.filter((t) => t.project_id === projectId && t.id !== taskId)
   }
 
-  const handleAddMember = () => {
-    if (!newMember.name || !newMember.role) return
+  const handleAddMember = async () => {
+    if (!newMember.name || !newMember.role || !newMember.email) return
 
-    const newId = teamMembers.length > 0 ? Math.max(...teamMembers.map((m) => m.id)) + 1 : 1
-
-    setTeamMembers([
-      ...teamMembers,
-      {
-        id: newId,
-        name: newMember.name,
+    try {
+      // Replace with your actual endpoint for adding team members
+      const { data, error } = await apiRequest("POST", ENDPOINT.AUTH.teamMemberCreate, {
+        user_name: newMember.name,
+        email: newMember.email,
         role: newMember.role,
-        image: null,
-      },
-    ])
+        project_id: projectId,
+      })
 
-    // Reset form
-    setNewMember({ name: "", role: "", email: "" })
-    setIsAddingMember(false)
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Add the new member to the list
+      if (data) {
+        setTeamMembers((prev) => [...prev, data])
+
+        toast({
+          title: "Success",
+          description: "Team member added successfully",
+        })
+      }
+
+      // Reset form
+      setNewMember({ name: "", role: "", email: "" })
+      setIsAddingMember(false)
+
+      // Refresh team members
+      getTeamMembers()
+    } catch (error) {
+      console.error("Error adding team member:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add team member",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Calculate due date from start date and duration
+  const calculateDueDate = (startDate: string | undefined, durationDays: number | undefined) => {
+    if (!startDate || !durationDays) return null
+
+    const date = new Date(startDate)
+    date.setDate(date.getDate() + durationDays)
+    return date
+  }
+
+  // Add this function before the return statement to group messages by date
+  const groupMessagesByDate = (messages) => {
+    const groups = {}
+
+    messages.forEach((message) => {
+      const date = new Date(message.created_at)
+      const dateStr = date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+
+      if (!groups[dateStr]) {
+        groups[dateStr] = []
+      }
+
+      groups[dateStr].push(message)
+    })
+
+    return Object.entries(groups).map(([date, messages]) => ({
+      date,
+      messages,
+    }))
+  }
+
+  // Add the handleCreateTask function to the component
+  // Add this after the other handler functions:
+
+  // Function to create a new task
+  const handleCreateTask = async (taskData) => {
+    try {
+      // Use the task operations hook to create the task
+      const result = await handleUpdateTask(null, taskData)
+
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Task created successfully",
+        })
+
+        // Refresh the task list
+        getProjectTasks()
+        return result
+      }
+      return null
+    } catch (error) {
+      console.error("Error creating task:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive",
+      })
+      return null
+    }
   }
 
   if (isLoading) {
@@ -260,48 +538,53 @@ export default function ProjectDetailPage() {
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
         <h2 className="text-2xl font-semibold mb-2">Project Not Found</h2>
         <p className="text-muted-foreground mb-4">The project you're looking for doesn't exist or has been removed.</p>
-        <Button onClick={() => router.push("/app/projects")}>Back to Projects</Button>
+        <Button onClick={() => router.push("/projects")}>Back to Projects</Button>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 space-y-3 md:space-y-4">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-2 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             className="rounded-full bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700"
-            onClick={() => router.push("/app/projects")}
+            onClick={() => router.push("/projects")}
           >
-            <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </Button>
           <div className="flex items-center">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 capitalize ">
+            <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 capitalize">
               {project.title}
             </h1>
             {/* <p className="text-sm text-muted-foreground mt-1">Project #{project?.id?.slice(0, 8)}</p> */}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary shadow-sm"
-            onClick={() => router.push(`/app/projects/${projectId}/edit`)}
+            size="sm"
+            className="gap-1 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary shadow-sm"
+            onClick={() => router.push(`/projects/${projectId}/edit`)}
           >
-            <Edit className="h-4 w-4" />
-            Edit Project
+            <Edit className="h-3.5 w-3.5" />
+            Edit
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                <MoreHorizontal className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -310,9 +593,9 @@ export default function ProjectDetailPage() {
                 Project Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem className="text-red-600" onClick={handleDeleteProject} disabled={isDeleting}>
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Project
+                {isDeleting ? "Deleting..." : "Delete Project"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -323,25 +606,25 @@ export default function ProjectDetailPage() {
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-2 md:gap-3 lg:gap-4"
       >
         <motion.div variants={fadeInUp} className="col-span-1 lg:col-span-2" transition={{ duration: 0.6 }}>
           <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 z-0"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full -ml-12 -mb-12 z-0"></div>
 
-            <CardHeader className="relative z-10 border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+            <CardHeader className="relative z-10 border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm py-2 px-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+                  <CardTitle className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
                     Project Overview
                   </CardTitle>
-                  <CardDescription className="text-base mt-1">
-                    Track progress and manage tasks for {project.project_title}
+                  <CardDescription className="text-sm mt-0.5">
+                    Track progress and manage tasks for {project.title}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary px-3 py-1">
+                  <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary px-2 py-0.5 text-xs">
                     {project.progress_percentage >= 100
                       ? "Completed"
                       : project.progress_percentage > 0
@@ -352,78 +635,78 @@ export default function ProjectDetailPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-6 p-6 relative z-10">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm font-medium">
+            <CardContent className="space-y-3 p-3 relative z-10">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-medium">
                   <span>Overall Progress</span>
                   <span className="text-primary font-bold">{project.progress_percentage}%</span>
                 </div>
-                <div className="relative pt-1">
-                  <div className="overflow-hidden h-4 text-xs flex rounded-xl bg-primary/10">
+                <div className="relative">
+                  <div className="overflow-hidden h-2 text-xs flex rounded-lg bg-primary/10">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${project.progress_percentage}%` }}
                       transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-primary to-purple-600 rounded-xl"
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-primary to-purple-600 rounded-lg"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Key Project Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Client</p>
-                  <p className="font-medium">{project.customer_name}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Client</p>
+                  <p className="font-medium text-sm">{project.customer_name}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Budget</p>
-                  <p className="font-medium">${project.budget || 2500}</p>
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Budget</p>
+                  <p className="font-medium text-sm">${project.budget || 2500}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Start Date</p>
-                  <p className="font-medium">{formatDate(project.start_date || "2025-04-06T00:00:00.000Z")}</p>
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Start Date</p>
+                  <p className="font-medium text-sm">{formatDate(project.start_date || "2025-04-06T00:00:00.000Z")}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Duration</p>
-                  <p className="font-medium">{project.duration_days || 112} days</p>
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Duration</p>
+                  <p className="font-medium text-sm">{project.duration_days || 112} days</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Priority</p>
-                  <p className="font-medium capitalize">{project.priority || "Low"}</p>
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Priority</p>
+                  <p className="font-medium text-sm capitalize">{project.priority || "Low"}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Payment Type</p>
-                  <p className="font-medium capitalize">{project.payment_type || "Fixed"}</p>
+                <div className="space-y-0">
+                  <p className="text-xs font-medium text-muted-foreground">Payment Type</p>
+                  <p className="font-medium text-sm capitalize">{project.payment_type || "Fixed"}</p>
                 </div>
               </div>
 
               {/* Only show detailed stats to team members and admins */}
               {(userRole === "admin" || userRole === "team") && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 pt-2">
-                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
-                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
-                      <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
-                          <FolderKanban className="h-6 w-6 text-white" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <motion.div whileHover={{ y: -3, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:border-primary/50">
+                      <CardContent className="p-2 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
+                          <FolderKanban className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
-                          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{project.total_tasks}</p>
+                          <p className="text-xs font-medium text-muted-foreground">Total Tasks</p>
+                          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{project.total_tasks}</p>
                         </div>
                       </CardContent>
                     </Card>
                   </motion.div>
 
-                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
-                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
-                      <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-md shadow-green-500/20 group-hover:shadow-green-500/40 transition-all duration-300">
-                          <CheckCircle className="h-6 w-6 text-white" />
+                  <motion.div whileHover={{ y: -3, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:border-primary/50">
+                      <CardContent className="p-2 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow-sm shadow-green-500/20 group-hover:shadow-green-500/40 transition-all duration-300">
+                          <CheckCircle className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                          <p className="text-xs font-medium text-muted-foreground">Completed</p>
+                          <p className="text-xl font-bold text-green-600 dark:text-green-400">
                             {project.completed_tasks}
                           </p>
                         </div>
@@ -431,15 +714,15 @@ export default function ProjectDetailPage() {
                     </Card>
                   </motion.div>
 
-                  <motion.div whileHover={{ y: -5, transition: { duration: 0.2 } }} className="group">
-                    <Card className="border border-slate-200 dark:border-slate-700 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50">
-                      <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 shadow-md shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300">
-                          <Clock className="h-6 w-6 text-white" />
+                  <motion.div whileHover={{ y: -3, transition: { duration: 0.2 } }} className="group">
+                    <Card className="border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:border-primary/50">
+                      <CardContent className="p-2 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-sm shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300">
+                          <Clock className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">In Progress</p>
-                          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                          <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+                          <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
                             {project.total_tasks - project.completed_tasks}
                           </p>
                         </div>
@@ -455,8 +738,8 @@ export default function ProjectDetailPage() {
         <motion.div variants={fadeInUp} className="relative" transition={{ duration: 0.6, delay: 0.2 }}>
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-xl -m-1 blur-xl"></div>
           <Card className="h-full border-none shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-900/80 relative z-10">
-            <CardHeader className="border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <CardHeader className="border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm py-3 px-4">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
                   Additional Details
                 </span>
@@ -478,10 +761,10 @@ export default function ProjectDetailPage() {
                   ].map((item, index) => (
                     <div
                       key={index}
-                      className="py-3 px-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      className="py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
-                      <p className="text-sm font-medium text-muted-foreground mb-1">{item.label}</p>
-                      <p className={`font-medium ${item.isCapitalize ? "capitalize" : ""}`}>{item.value}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">{item.label}</p>
+                      <p className={`font-medium text-sm ${item.isCapitalize ? "capitalize" : ""}`}>{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -493,134 +776,43 @@ export default function ProjectDetailPage() {
 
       <Tabs defaultValue={userRole === "customer" ? "messages" : "tasks"} className="w-full">
         <TabsList
-          className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} w-full max-w-md`}
+          className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} w-full max-w-md h-9`}
         >
           {(userRole === "admin" || userRole === "team") && (
             <>
-              <TabsTrigger value="tasks" className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
+              <TabsTrigger value="tasks" className="flex items-center gap-1 text-xs">
+                <CheckCircle className="h-3.5 w-3.5" />
                 Tasks
               </TabsTrigger>
-              <TabsTrigger value="team" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
+              <TabsTrigger value="team" className="flex items-center gap-1 text-xs">
+                <User className="h-3.5 w-3.5" />
                 Team
               </TabsTrigger>
             </>
           )}
-          <TabsTrigger value="messages" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
+          <TabsTrigger value="messages" className="flex items-center gap-1 text-xs">
+            <MessageSquare className="h-3.5 w-3.5" />
             Messages
           </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
+          <TabsTrigger value="files" className="flex items-center gap-1 text-xs">
+            <FileText className="h-3.5 w-3.5" />
             Files
           </TabsTrigger>
         </TabsList>
 
         {(userRole === "admin" || userRole === "team") && (
           <TabsContent value="tasks" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Project Tasks</h2>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Task
-              </Button>
-            </div>
-
-            {isLoadingTasks ? (
-              <div className="space-y-4 animate-pulse">
-                {[1, 2, 3].map((_, index) => (
-                  <div key={index} className="h-24 bg-muted rounded-lg"></div>
-                ))}
-              </div>
-            ) : (
-              <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
-                {projectTasks.length > 0 ? (
-                  projectTasks.map((task, index) => (
-                    <motion.div
-                      key={task.id}
-                      variants={fadeInUp}
-                      onClick={() => handleTaskClick(task)}
-                      className="cursor-pointer"
-                    >
-                      <Card className="hover:shadow-md transition-all">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className="mt-1">
-                                {statusIcons[task.status] || <Circle className="h-4 w-4 text-slate-500" />}
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg">{task.title}</CardTitle>
-                                <CardDescription className="mt-1 line-clamp-2">{task.description}</CardDescription>
-                                {task.due_date && (
-                                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                                    {new Date(task.due_date).toLocaleDateString(undefined, {
-                                      month: "short",
-                                      day: "numeric",
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <Badge className={statusColors[task.status] || "bg-slate-100 text-slate-800"}>
-                              {task.status}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardFooter className="flex justify-between pt-4 border-t mt-2">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            <span>Updated {formatDate(task.updated_at || task.created_at)}</span>
-                          </div>
-                          {task.assignee && (
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm">Assigned to:</p>
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage
-                                  src={task.assignee.profile_image || undefined}
-                                  alt={task.assignee.user_name}
-                                />
-                                <AvatarFallback>{getInitials(task.assignee.user_name)}</AvatarFallback>
-                              </Avatar>
-                            </div>
-                          )}
-                        </CardFooter>
-                      </Card>
-                    </motion.div>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-10">
-                      <div className="rounded-full bg-muted p-3 mb-4">
-                        <CheckCircle className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">No tasks found</h3>
-                      <p className="text-muted-foreground text-center max-w-md">
-                        This project doesn't have any tasks yet. Create your first task to get started.
-                      </p>
-                      <Button className="mt-4 gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add Task
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </motion.div>
-            )}
-          </TabsContent>
-        )}
-
-        {(userRole === "admin" || userRole === "team") && (
-          <TabsContent value="tasks" className="mt-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-3">
               <div>
-                <h2 className="text-xl font-semibold">Project Tasks</h2>
-                <p className="text-sm text-muted-foreground mt-1">Manage and track tasks for this project</p>
+                <h2 className="text-lg font-semibold">Project Tasks</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Manage and track tasks for this project</p>
               </div>
-              <Button className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                <Plus className="h-4 w-4" />
+              <Button
+                size="sm"
+                className="gap-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                onClick={() => setIsNewTaskFormOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
                 Add Task
               </Button>
             </div>
@@ -635,7 +827,7 @@ export default function ProjectDetailPage() {
               <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
                 {projectTasks.length > 0 ? (
                   <div className="bg-white dark:bg-slate-900 rounded-xl border border-border/50 shadow-sm overflow-hidden">
-                    <div className="grid grid-cols-12 gap-4 p-4 text-sm font-medium text-muted-foreground border-b">
+                    <div className="grid grid-cols-12 gap-3 p-3 text-xs font-medium text-muted-foreground border-b">
                       <div className="col-span-6 md:col-span-5">Task</div>
                       <div className="col-span-3 md:col-span-2 text-center">Status</div>
                       <div className="hidden md:block md:col-span-2">Due Date</div>
@@ -650,7 +842,7 @@ export default function ProjectDetailPage() {
                           className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                           onClick={() => handleTaskClick(task)}
                         >
-                          <div className="grid grid-cols-12 gap-4 p-4 items-center relative">
+                          <div className="grid grid-cols-12 gap-3 p-3 items-center relative">
                             {/* Priority indicator */}
                             {task.priority === "High" && (
                               <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
@@ -660,38 +852,38 @@ export default function ProjectDetailPage() {
                             )}
 
                             {/* Task title and description */}
-                            <div className="col-span-6 md:col-span-5 flex items-start gap-3">
+                            <div className="col-span-6 md:col-span-5 flex items-start gap-2">
                               <div className="mt-1 flex-shrink-0">
                                 {task.status === "Completed" ? (
-                                  <CheckCircle className="h-5 w-5 text-green-500" />
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
                                 ) : task.status === "In Progress" ? (
-                                  <Clock className="h-5 w-5 text-blue-500" />
+                                  <Clock className="h-4 w-4 text-blue-500" />
                                 ) : (
-                                  <Circle className="h-5 w-5 text-slate-400" />
+                                  <Circle className="h-4 w-4 text-slate-400" />
                                 )}
                               </div>
                               <div>
-                                <h3 className="font-medium text-base group-hover:text-primary transition-colors line-clamp-1">
+                                <h3 className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-1">
                                   {task.title}
                                 </h3>
-                                <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">{task.description}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{task.description}</p>
                                 {task.due_date && (
-                                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                  <div className="flex items-center text-[10px] text-muted-foreground mt-0.5">
+                                    <Calendar className="h-3 w-3 mr-1" />
                                     {new Date(task.due_date).toLocaleDateString(undefined, {
                                       month: "short",
                                       day: "numeric",
                                     })}
                                   </div>
                                 )}
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-1.5 mt-0.5">
                                   <Badge
                                     variant="outline"
-                                    className="text-xs px-1.5 py-0 border-muted-foreground/30 bg-background"
+                                    className="text-[10px] px-1 py-0 border-muted-foreground/30 bg-background"
                                   >
                                     {task.task_group || "Backlog"}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     Created {new Date(task.created_at).toLocaleDateString()}
                                   </span>
                                 </div>
@@ -752,8 +944,8 @@ export default function ProjectDetailPage() {
                             </div>
 
                             {/* Action button that appears on hover */}
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </div>
@@ -764,16 +956,20 @@ export default function ProjectDetailPage() {
                   </div>
                 ) : (
                   <Card className="border border-dashed bg-background/50">
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <div className="rounded-full bg-primary/10 p-4 mb-4">
-                        <CheckCircle className="h-8 w-8 text-primary" />
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <div className="rounded-full bg-primary/10 p-3 mb-3">
+                        <CheckCircle className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-xl font-medium mb-2">No tasks found</h3>
-                      <p className="text-muted-foreground text-center max-w-md mb-6">
+                      <h3 className="text-base font-medium mb-1">No tasks found</h3>
+                      <p className="text-muted-foreground text-center text-sm max-w-md mb-4">
                         This project doesn't have any tasks yet. Create your first task to get started.
                       </p>
-                      <Button className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                        <Plus className="h-4 w-4" />
+                      <Button
+                        size="sm"
+                        className="gap-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                        onClick={() => setIsNewTaskFormOpen(true)}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
                         Create First Task
                       </Button>
                     </CardContent>
@@ -786,12 +982,12 @@ export default function ProjectDetailPage() {
 
         {(userRole === "admin" || userRole === "team") && (
           <TabsContent value="team" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Team Members</h2>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold">Team Members</h2>
               <Dialog open={isAddingMember} onOpenChange={setIsAddingMember}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button size="sm" className="gap-1">
+                    <Plus className="h-3.5 w-3.5" />
                     Add Member
                   </Button>
                 </DialogTrigger>
@@ -859,31 +1055,37 @@ export default function ProjectDetailPage() {
             </div>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {teamMembers.map((member, index) => (
-                    <motion.div
-                      key={member.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <Card>
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={member.image || undefined} alt={member.name} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
-                              {getInitials(member.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-muted-foreground">{member.role}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {teamMembers.length > 0 ? (
+                    teamMembers.map((member, index) => (
+                      <motion.div
+                        key={member.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
+                        <Card>
+                          <CardContent className="p-3 flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={member.profile_image || undefined} alt={member.user_name} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                                {getInitials(member.user_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{member.user_name}</p>
+                              <p className="text-xs text-muted-foreground">{member.role || "Team Member"}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-6">
+                      <p className="text-muted-foreground text-sm">No team members assigned to this project yet.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -892,66 +1094,225 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="messages" className="mt-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Project Messages</h2>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
+            <div>
+              <h2 className="text-lg font-semibold">Project Messages</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Communicate with team members and clients</p>
+            </div>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
               New Message
             </Button>
           </div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {[
-                  {
-                    sender: "Alex Johnson",
-                    message:
-                      "I've updated the homepage design based on client feedback. Please review when you get a chance.",
-                    time: "2 days ago",
-                  },
-                  {
-                    sender: "Sarah Miller",
-                    message: "The new color scheme looks great! I've made some minor adjustments to the spacing.",
-                    time: "1 day ago",
-                  },
-                ].map((message, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="flex gap-4"
-                  >
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
-                        {getInitials(message.sender)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium">{message.sender}</p>
-                        <p className="text-xs text-muted-foreground">{message.time}</p>
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardContent className="p-0">
+              {/* Replace the messages container in the Messages tab with this updated version */}
+              {/* Find the section that starts with: <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"> */}
+              {/* And replace it with: */}
+
+              <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+                <div className="space-y-4">
+                  {messages.length > 0 ? (
+                    groupMessagesByDate(messages).map((group, groupIndex) => (
+                      <div key={group.date} className="space-y-4">
+                        {/* Date header */}
+                        <div className="flex items-center justify-center my-4">
+                          <div className="bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-slate-200">
+                            {group.date}
+                          </div>
+                        </div>
+
+                        {/* Messages for this date */}
+                        {group.messages.map((message, index) => {
+                          const isCurrentUser = message.sender?.id === user?.id
+                          return (
+                            <motion.div
+                              key={message.id || `${groupIndex}-${index}`}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2, delay: index * 0.05 }}
+                              className={`flex gap-3 ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                            >
+                              {!isCurrentUser && (
+                                <Avatar className="h-8 w-8 mt-1 ring-2 ring-background">
+                                  <AvatarImage
+                                    src={message.sender?.profile_image || undefined}
+                                    alt={message.sender?.user_name || "User"}
+                                  />
+                                  <AvatarFallback
+                                    className={`text-xs ${
+                                      message.sender?.role === "admin" || message.sender?.role === "team_member"
+                                        ? "bg-gradient-to-br from-indigo-500 to-purple-600"
+                                        : "bg-gradient-to-br from-primary to-purple-600"
+                                    } text-white`}
+                                  >
+                                    {getInitials(message.sender?.user_name || "User")}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+
+                              <div
+                                className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"} max-w-[75%]`}
+                              >
+                                {/* Replace this part: */}
+                                {/*{!isCurrentUser && (*/}
+                                {/*  <div className="flex items-center gap-2 mb-1">*/}
+                                {/*    <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>*/}
+                                {/*    /!* Show role badge only for admin and team members *!/*/}
+                                {/*    {(userRole === "admin" || userRole === "team_member") && message.sender?.role && (*/}
+                                {/*      <Badge*/}
+                                {/*        variant="outline"*/}
+                                {/*        className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"*/}
+                                {/*      >*/}
+                                {/*        {message.sender.role === "admin"*/}
+                                {/*          ? "Admin"*/}
+                                {/*          : message.sender.role === "team_member"*/}
+                                {/*            ? "Team"*/}
+                                {/*            : "Client"}*/}
+                                {/*      </Badge>*/}
+                                {/*    )}*/}
+                                {/*  </div>*/}
+                                {/*)}*/}
+
+                                {/* With this updated code: */}
+                                {!isCurrentUser && (
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {/* For team members viewing messages */}
+                                    {userRole === "team_member" && (
+                                      <>
+                                        {/* Show name only if sender is another team member */}
+                                        {message.sender?.role === "team_member" && (
+                                          <p className="text-xs font-medium">
+                                            {message.sender?.user_name || "Team Member"}
+                                          </p>
+                                        )}
+
+                                        {/* Show role badge for admin and client */}
+                                        {message.sender?.role && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"
+                                          >
+                                            {message.sender.role === "admin"
+                                              ? "Admin"
+                                              : message.sender.role === "customer"
+                                                ? "Client"
+                                                : null}
+                                          </Badge>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* For admin viewing messages - show all names and badges */}
+                                    {userRole === "admin" && (
+                                      <>
+                                        <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>
+                                        {message.sender?.role && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"
+                                          >
+                                            {message.sender.role === "admin"
+                                              ? "Admin"
+                                              : message.sender.role === "team_member"
+                                                ? "Team"
+                                                : "Client"}
+                                          </Badge>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* For customer viewing messages - don't show any names or badges */}
+                                    {userRole === "customer" && <></>}
+                                  </div>
+                                )}
+
+                                <div
+                                  className={`rounded-2xl px-4 py-2 ${
+                                    isCurrentUser
+                                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                                      : "bg-muted rounded-tl-none"
+                                  }`}
+                                >
+                                  <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                                  <p
+                                    className={`text-[10px] mt-1 text-right ${isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                                  >
+                                    {new Date(message.created_at).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {isCurrentUser && (
+                                <Avatar className="h-8 w-8 mt-1 ring-2 ring-background">
+                                  <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                                    {getInitials(user?.name || "You")}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                            </motion.div>
+                          )
+                        })}
                       </div>
-                      <p className="text-sm mt-1">{message.message}</p>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="rounded-full bg-primary/10 p-3 mb-3">
+                        <MessageSquare className="h-6 w-6 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-medium mb-1">No messages yet</h3>
+                      <p className="text-muted-foreground text-sm max-w-md mb-4">
+                        Start the conversation with your team or client to discuss project details.
+                      </p>
                     </div>
-                  </motion.div>
-                ))}
+                  )}
+                </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t">
-                <div className="flex gap-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
-                      {getInitials("You")}
+              {/* Message input area with styling */}
+              <div className="border-t bg-card p-4">
+                <div className="flex gap-3">
+                  <Avatar className="h-8 w-8 mt-1">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                      {getInitials(user?.name || "You")}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <textarea
-                      className="w-full p-2 rounded-md border min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Type your message here..."
-                    ></textarea>
-                    <div className="flex justify-end mt-2">
-                      <Button>Send Message</Button>
+                  <div className="flex-1 space-y-2">
+                    <div className="relative">
+                      <textarea
+                        className="w-full p-3 pr-12 rounded-lg border border-input bg-background min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm resize-none"
+                        placeholder="Type your message here..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        rows={3}
+                      ></textarea>
+                      <div className="absolute bottom-2 right-2 flex gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full hover:bg-primary/10"
+                        >
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim()}
+                        className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Send Message
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -961,54 +1322,64 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="files" className="mt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Project Files</h2>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-semibold">Project Files</h2>
+            <Button size="sm" className="gap-1">
+              <Plus className="h-3.5 w-3.5" />
               Upload File
             </Button>
           </div>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { name: "Homepage Design.fig", type: "Design", size: "2.4 MB", date: "Mar 15, 2023" },
-                  { name: "Project Requirements.pdf", type: "Document", size: "1.2 MB", date: "Mar 10, 2023" },
-                  { name: "Logo Assets.zip", type: "Archive", size: "4.7 MB", date: "Mar 12, 2023" },
-                ].map((file, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Card className="hover:shadow-md transition-all">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-md bg-primary/10">
-                            <FileText className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{file.name}</p>
-                            <div className="flex items-center text-xs text-muted-foreground mt-1">
-                              <span>{file.type}</span>
-                              <span className="mx-2">•</span>
-                              <span>{file.size}</span>
-                              <span className="mx-2">•</span>
-                              <span>{file.date}</span>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {files.length > 0 ? (
+                  files.map((file, index) => (
+                    <motion.div
+                      key={file.id || index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                      <Card className="hover:shadow-md transition-all">
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-md bg-primary/10">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{file.file_name}</p>
+                              <div className="flex items-center text-[10px] text-muted-foreground mt-0.5">
+                                <span>{file.file_type}</span>
+                                <span className="mx-1.5">•</span>
+                                <span>{file.file_size}</span>
+                                <span className="mx-1.5">•</span>
+                                <span>{formatDate(file.uploaded_at)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-6">
+                    <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <NewTaskForm
+        isOpen={isNewTaskFormOpen}
+        onClose={() => setIsNewTaskFormOpen(false)}
+        onSubmit={handleCreateTask}
+        initialProjectId={projectId}
+      />
+
       {/* Add the TaskDetailSheet component at the end of the return statement, just before the closing </div> */}
       {selectedTask && (
         <TaskDetailSheet
@@ -1018,6 +1389,7 @@ export default function ProjectDetailPage() {
           onStatusChange={handleTaskStatusChange}
           relatedTasks={getRelatedTasks(selectedTask.id, selectedTask.project_id)}
           handleUpdateTask={handleUpdateTask}
+          onTaskUpdate={handleTaskUpdate}
         />
       )}
     </div>

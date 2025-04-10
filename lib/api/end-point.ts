@@ -10,9 +10,13 @@ export const ENDPOINT = {
     getUser: "/api/auth/profile",
   },
   PROJECT: {
-    create: "/api/project/create",
-    getProjects: "/api/project",
-    fetchProjects: "/api/project/",
+    base: "/api/projects",
+    byId: (id: string) => `/api/projects/${id}`,
+    stats: "/api/projects/stats",
+    byCustomer: (customerId: string) => `/api/projects/customer/${customerId}`,
+    files: (projectId: string) => `/api/projects/${projectId}/files`,
+    feedback: (projectId: string) => `/api/projects/${projectId}/feedback`,
+    messages: (projectId: string) => `/api/projects/${projectId}/messages`,
   },
   TASK: {
     base: "/api/tasks",

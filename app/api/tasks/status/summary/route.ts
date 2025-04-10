@@ -1,11 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 
 // GET task status summary
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get("projectId")
     const userId = searchParams.get("userId")

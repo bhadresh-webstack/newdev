@@ -25,10 +25,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
-import { ENDPOINT } from "@/lib/api/end-point"
-import { apiRequest } from "@/lib/useApi"
-// import { apiRequest } from "@/lib/api-client" // Update path
-// import { ENDPOINT } from "@/lib/constants/endpoints" // Update path
+import { apiRequest } from "@/lib/useApi" // Updated import path
+import { ENDPOINT } from "@/lib/api/end-point" // Updated import path
 
 // Task status options with icons
 const statusOptions = [
@@ -153,7 +151,7 @@ export const NewTaskForm = memo(function NewTaskForm({
 
     setIsLoadingProjects(true)
     try {
-      const { data, error } = await apiRequest<{ projects: Project[] }>("GET", ENDPOINT.PROJECT.fetchProjects)
+      const { data, error } = await apiRequest<{ projects: Project[] }>("GET", ENDPOINT.PROJECT.base)
 
       if (error) {
         console.error("Error fetching projects:", error)
@@ -170,7 +168,7 @@ export const NewTaskForm = memo(function NewTaskForm({
     } finally {
       setIsLoadingProjects(false)
     }
-  }, [projects.length])
+  }, [projects.length, toast])
 
   // Fetch team members from API
   const fetchTeamMembers = useCallback(async () => {

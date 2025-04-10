@@ -1,33 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { cookies } from "next/headers"
-
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
+import { authenticateRequest } from "@/lib/auth-utils"
 
 const prisma = new PrismaClient()
 
 // GET all tasks with optional filtering
 export async function GET(request: NextRequest) {
   try {
-    // Get the auth token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
 
-    // If no token is provided, return unauthorized
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
     }
 
-    // Verify and decode the token
-    let decodedToken
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: string }
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const { userId, role } = decodedToken
+    const { userId, role } = auth
 
     // If user is a customer, they shouldn't see any tasks
     if (role === "customer") {
@@ -86,6 +73,13 @@ export async function GET(request: NextRequest) {
 // POST create a new task
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const body = await request.json()
     const { project_id, assigned_to, title, description, status, task_group } = body
 
@@ -144,6 +138,13 @@ export async function POST(request: NextRequest) {
 // PUT update all tasks (batch update)
 export async function PUT(request: NextRequest) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
     const body = await request.json()
     const { tasks } = body
 

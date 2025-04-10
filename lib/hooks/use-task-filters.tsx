@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useTasksStore } from "@/lib/stores/tasks-store" // Updated import path
+import { useTasksStore } from "@/lib/stores/tasks-store"
 
 export function useTaskFilters() {
   const {

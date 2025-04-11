@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import {
@@ -57,6 +57,13 @@ import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
 import { useTaskOperations } from "@/lib/hooks/use-task-operations"
 import { ENDPOINT } from "@/lib/api/end-point"
 import { NewTaskForm } from "@/components/tasks/new-task-form"
+import {
+  initializeProjectConnection,
+  addMessageListener,
+  removeMessageListener,
+  closeProjectConnection,
+  sendMessage as sendMessageToServer,
+} from "@/lib/socket"
 
 // Animation variants
 const fadeInUp = {
@@ -121,6 +128,48 @@ export default function ProjectDetailPage() {
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Inside the ProjectDetailPage component, add this socket-related code after the state declarations
+  const socket = useRef(null)
+
+  // Add this effect to initialize SSE connection and message listeners
+  useEffect(() => {
+    if (projectId && user?.id) {
+      // Initialize SSE connection for this project
+      initializeProjectConnection(projectId, user.id)
+
+      // Set up message listener
+      const handleNewMessage = (message, isReplacement) => {
+        console.log("New message received:", message, isReplacement ? "(replacement)" : "")
+
+        // Add the new message to the state if it's not already there
+        setMessages((prevMessages) => {
+          if (isReplacement) {
+            // Replace the temporary message with the real one
+            return prevMessages.map((m) =>
+              m.id.toString().startsWith("temp-") && m.sender_id === message.sender_id && m.message === message.message
+                ? { ...message, isTemp: false }
+                : m,
+            )
+          } else {
+            // Check if message already exists
+            const exists = prevMessages.some((m) => m.id === message.id)
+            if (exists) return prevMessages
+            return [...prevMessages, message]
+          }
+        })
+      }
+
+      // Add the message listener
+      addMessageListener(projectId, handleNewMessage)
+
+      // Clean up on unmount
+      return () => {
+        removeMessageListener(projectId, handleNewMessage)
+        closeProjectConnection(projectId)
+      }
+    }
+  }, [projectId, user?.id])
 
   // Fetch project data
   const getProject = async () => {
@@ -253,29 +302,46 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Function to send a message
+  // Update the sendMessage function to use our new messaging system
   const sendMessage = async () => {
     if (!newMessage.trim()) return
 
     try {
-      const { data, error } = await apiRequest("POST", ENDPOINT.PROJECT.messages(projectId), {
-        message: newMessage,
+      // Create temporary message for optimistic UI update
+      const tempMessage = {
+        id: `temp-${Date.now()}`,
+        project_id: projectId,
+        sender_id: user?.id,
         receiver_id: project?.customer_id, // Default to customer, adjust as needed
-      })
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: error,
-          variant: "destructive",
-        })
-        return
+        message: newMessage,
+        created_at: new Date().toISOString(),
+        isTemp: true, // Flag to indicate this is a temporary message
+        sender: {
+          id: user?.id,
+          user_name: user?.name || "You",
+          profile_image: user?.profile_image,
+          role: user?.role,
+        },
       }
 
-      // Add the new message to the list
-      if (data) {
-        setMessages((prev) => [...prev, data])
-        setNewMessage("")
+      // Add to messages for immediate display
+      setMessages((prev) => [...prev, tempMessage])
+
+      // Clear input
+      setNewMessage("")
+
+      // Send the message
+      const result = await sendMessageToServer(projectId, newMessage, user?.id, project?.customer_id)
+
+      if (!result.success) {
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive",
+        })
+
+        // If sending failed, mark the temp message as failed
+        setMessages((prev) => prev.map((m) => (m.id === tempMessage.id ? { ...m, sendFailed: true } : m)))
       }
     } catch (error) {
       console.error("Error sending message:", error)
@@ -515,6 +581,15 @@ export default function ProjectDetailPage() {
       return null
     }
   }
+
+  // Add this effect to scroll to the bottom when new messages arrive
+  useEffect(() => {
+    // Scroll to the bottom of the messages container when messages change
+    const messagesContainer = document.getElementById("messages-container")
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+    }
+  }, [messages])
 
   if (isLoading) {
     return (
@@ -1113,7 +1188,10 @@ export default function ProjectDetailPage() {
               {/* Find the section that starts with: <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"> */}
               {/* And replace it with: */}
 
-              <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+              <div
+                className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"
+                id="messages-container"
+              >
                 <div className="space-y-4">
                   {messages.length > 0 ? (
                     groupMessagesByDate(messages).map((group, groupIndex) => (
@@ -1128,6 +1206,8 @@ export default function ProjectDetailPage() {
                         {/* Messages for this date */}
                         {group.messages.map((message, index) => {
                           const isCurrentUser = message.sender?.id === user?.id
+                          const isTemp = message.isTemp // Update this line
+
                           return (
                             <motion.div
                               key={message.id || `${groupIndex}-${index}`}
@@ -1157,40 +1237,16 @@ export default function ProjectDetailPage() {
                               <div
                                 className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"} max-w-[75%]`}
                               >
-                                {/* Replace this part: */}
-                                {/*{!isCurrentUser && (*/}
-                                {/*  <div className="flex items-center gap-2 mb-1">*/}
-                                {/*    <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>*/}
-                                {/*    /!* Show role badge only for admin and team members *!/*/}
-                                {/*    {(userRole === "admin" || userRole === "team_member") && message.sender?.role && (*/}
-                                {/*      <Badge*/}
-                                {/*        variant="outline"*/}
-                                {/*        className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"*/}
-                                {/*      >*/}
-                                {/*        {message.sender.role === "admin"*/}
-                                {/*          ? "Admin"*/}
-                                {/*          : message.sender.role === "team_member"*/}
-                                {/*            ? "Team"*/}
-                                {/*            : "Client"}*/}
-                                {/*      </Badge>*/}
-                                {/*    )}*/}
-                                {/*  </div>*/}
-                                {/*)}*/}
-
-                                {/* With this updated code: */}
                                 {!isCurrentUser && (
                                   <div className="flex items-center gap-2 mb-1">
-                                    {/* For team members viewing messages */}
+                                    {/* User name and role display logic */}
                                     {userRole === "team_member" && (
                                       <>
-                                        {/* Show name only if sender is another team member */}
                                         {message.sender?.role === "team_member" && (
                                           <p className="text-xs font-medium">
                                             {message.sender?.user_name || "Team Member"}
                                           </p>
                                         )}
-
-                                        {/* Show role badge for admin and client */}
                                         {message.sender?.role && (
                                           <Badge
                                             variant="outline"
@@ -1205,8 +1261,6 @@ export default function ProjectDetailPage() {
                                         )}
                                       </>
                                     )}
-
-                                    {/* For admin viewing messages - show all names and badges */}
                                     {userRole === "admin" && (
                                       <>
                                         <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>
@@ -1224,8 +1278,6 @@ export default function ProjectDetailPage() {
                                         )}
                                       </>
                                     )}
-
-                                    {/* For customer viewing messages - don't show any names or badges */}
                                     {userRole === "customer" && <></>}
                                   </div>
                                 )}
@@ -1233,19 +1285,29 @@ export default function ProjectDetailPage() {
                                 <div
                                   className={`rounded-2xl px-4 py-2 ${
                                     isCurrentUser
-                                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                                      ? `bg-primary text-primary-foreground rounded-tr-none ${
+                                          isTemp ? "opacity-70" : ""
+                                        }`
                                       : "bg-muted rounded-tl-none"
                                   }`}
                                 >
                                   <p className="text-sm whitespace-pre-wrap">{message.message}</p>
-                                  <p
-                                    className={`text-[10px] mt-1 text-right ${isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}`}
-                                  >
-                                    {new Date(message.created_at).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </p>
+                                  <div className="flex items-center justify-end gap-1 mt-1">
+                                    <p
+                                      className={`text-[10px] ${isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                                    >
+                                      {new Date(message.created_at).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </p>
+                                    {isTemp && (
+                                      <span className="text-[10px] italic">{isCurrentUser ? "sending..." : ""}</span>
+                                    )}
+                                    {message.sendFailed && (
+                                      <span className="text-[10px] text-red-500 italic">failed to send</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import { broadcastToProject } from "@/app/api/messages/sse/route"
 
 const prisma = new PrismaClient()
 
@@ -189,6 +190,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       },
     })
+
+    // Broadcast the message to all clients in the project
+    broadcastToProject(projectId, newMessage)
 
     // If the user is a customer, modify the response to hide team member and admin names
     if (role === "customer") {

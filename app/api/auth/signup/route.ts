@@ -1,85 +1,96 @@
-import { NextResponse } from "next/server";
-// import { PrismaClient } from "@prisma/client";
-import nodemailer from "nodemailer";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
-import bcrypt from "bcrypt";
-import prisma from "@/lib/prisma/client";
+import { type NextRequest, NextResponse } from "next/server"
+import { generateToken, getUsernameFromEmail, sendVerificationEmail } from "@/lib/auth-utils"
+import { prisma } from "@/lib/prisma"
 
-
-// ✅ Define validation schema using `zod`
-const signupSchema = z.object({
-  user_name: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["customer", "admin", "team_member"]).default("customer"),
-  profile_image: z.string().url().optional(),
-});
-
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await request.json()
+    const { email } = body
 
-    // ✅ Validate input fields using `zod`
-    const validation = signupSchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.errors.map((err) => err.message).join(", ") },
-        { status: 400 }
-      );
+    // Validate email
+    if (!email || !email.includes("@")) {
+      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
     }
 
-    const { user_name, email, password, role, profile_image } = validation.data;
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
 
-    // ✅ Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return NextResponse.json({ error: "Email is already in use" }, { status: 400 });
+      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
     }
 
-    // ✅ Hash password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate username from email
+    const user_name = getUsernameFromEmail(email)
 
-    // ✅ Create a new user in the database
+    // Check if username already exists
+    const existingUsername = await prisma.user.findUnique({
+      where: { user_name },
+    })
+
+    // If username exists, append a random number
+    let finalUsername = user_name
+    if (existingUsername) {
+      finalUsername = `${user_name}${Math.floor(1000 + Math.random() * 9000)}`
+    }
+
+    // Create user with temporary password (will be reset)
+    const tempPassword = Math.random().toString(36).slice(-10)
+
+    // Create user
     const newUser = await prisma.user.create({
-      data: { user_name, email, password: hashedPassword, role, profile_image },
-    });
-
-    // ✅ Generate a JWT-based password reset link (valid for 1 hour)
-    const resetToken = jwt.sign({ email }, process.env.JWT_SECRET!, { expiresIn: "1h" });
-    const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
-
-    // ✅ Send Welcome Email with Reset Link
-    const transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+      data: {
+        email,
+        user_name: finalUsername,
+        password: tempPassword, // This will be reset by the user
+        role: "customer", // Default role
       },
-    });
+    })
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Welcome!",
-      html: `
-        <h1>Hello ${user_name},</h1>
-        <p>Welcome to our platform! Please set your password by clicking the link below:</p>
-        <a href="${resetLink}" target="_blank" style="display:inline-block;padding:10px 20px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">Set Your Password</a>
-        <p>This link is valid for 1 hour.</p>
-        <p>If you did not request this, ignore this email.</p>
-        <br />
-        <p>Best regards,</p>
-        <p>The Team</p>
-      `,
-    };
+    // Generate verification token
+    const token = generateToken(
+      {
+        userId: newUser.id,
+        email: newUser.email,
+        purpose: "verification",
+      },
+      "24h",
+    )
 
-    await transporter.sendMail(mailOptions);
+    // Send verification email
+    const emailSent = await sendVerificationEmail(email, token)
 
-    return NextResponse.json({ success: "User created and password setup email sent!", user: newUser }, { status: 201 });
+    if (!emailSent) {
+      // If email fails, still return success but with a warning
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            user_name: newUser.user_name,
+          },
+          warning: "User created but verification email could not be sent",
+        },
+        { status: 201 },
+      )
+    }
 
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          user_name: newUser.user_name,
+        },
+        message: "User created successfully. Verification email sent.",
+      },
+      { status: 201 },
+    )
   } catch (error) {
-    console.error("Error creating user:", error);
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+    console.error("Signup error:", error)
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
   }
 }

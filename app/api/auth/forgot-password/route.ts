@@ -1,56 +1,54 @@
-import { NextResponse } from "next/server";
-// import { PrismaClient } from "@prisma/client";
-import nodemailer from "nodemailer";
-import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma/client";
+import { type NextRequest, NextResponse } from "next/server"
+import { PrismaClient } from "@prisma/client"
+import { generateToken, sendVerificationEmail } from "@/lib/auth-utils"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"; // Use a secure secret key
+const prisma = new PrismaClient()
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { email } = await req.json();
+    const body = await request.json()
+    const { email } = body
 
-    // ✅ Check if the user exists
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 })
     }
 
-    // ✅ Generate a password reset token (valid for 1 hour)
-    const resetToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: "1h" });
-    const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    })
 
-    // ✅ Send the reset email
-    const transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+    // For security reasons, don't reveal if the user exists or not
+    if (!user) {
+      return NextResponse.json({
+        success: true,
+        message: "If your email is registered, you will receive a password reset link",
+      })
+    }
+
+    // Generate reset token
+    const token = generateToken(
+      {
+        userId: user.id,
+        email: user.email,
+        purpose: "verification",
       },
-    });
+      "24h",
+    )
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset Request",
-      html: `
-        <h1>Password Reset Request</h1>
-        <p>Click the link below to reset your password:</p>
-        <a href="${resetLink}" target="_blank" style="display:inline-block;padding:10px 20px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">Reset Your Password</a>
-        <p>This link is valid for 1 hour.</p>
-        <p>If you did not request this, please ignore this email.</p>
-        <br />
-        <p>Best regards,</p>
-        <p>The Team</p>
-      `,
-    };
+    // Send password reset email
+    const emailSent = await sendVerificationEmail(email, token)
 
-    await transporter.sendMail(mailOptions);
+    if (!emailSent) {
+      return NextResponse.json({ error: "Failed to send password reset email" }, { status: 500 })
+    }
 
-    return NextResponse.json({ success: "Password reset email sent!" }, { status: 200 });
-
+    return NextResponse.json({
+      success: true,
+      message: "If your email is registered, you will receive a password reset link",
+    })
   } catch (error) {
-    console.error("Error in forgot password:", error);
-    return NextResponse.json({ error: "Failed to send reset email" }, { status: 500 });
+    console.error("Forgot password error:", error)
+    return NextResponse.json({ error: "Failed to process request" }, { status: 500 })
   }
 }

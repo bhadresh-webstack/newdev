@@ -1,116 +1,120 @@
-import { NextResponse } from 'next/server'
-// import { PrismaClient } from "@prisma/client";
-import nodemailer from 'nodemailer'
-import jwt from 'jsonwebtoken'
-import { z } from 'zod'
-import bcrypt from 'bcrypt'
-import prisma from '@/lib/prisma/client'
+import { type NextRequest, NextResponse } from "next/server"
+import { PrismaClient } from "@prisma/client"
+import { verifyToken, getUsernameFromEmail, generateToken, sendVerificationEmail } from "@/lib/auth-utils"
+import { cookies } from "next/headers"
 
-// ✅ Define validation schema using `zod`
-const signupSchema = z.object({
-  user_name: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  team_role: z.string().optional(),
-  department: z.string().optional(),
-  // role: z.enum(["customer", "admin", "team_member"]).default("customer"),
-  profile_image: z.string().url().optional()
-})
+const prisma = new PrismaClient()
 
-export async function POST (req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json()
+    // Get token from cookies
+    const token = cookies().get("auth_token")?.value
 
-    // ✅ Validate input fields using `zod`
-    const validation = signupSchema.safeParse(body)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.errors.map(err => err.message).join(', ') },
-        { status: 400 }
-      )
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const { user_name, email, password, team_role, department, profile_image } =
-      validation.data
+    // Verify token
+    const decoded = verifyToken(token)
 
-    // ✅ Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } })
+    console.log("decoded",decoded)
+    if (!decoded || !decoded.userId || decoded.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { email, user_name, team_role, department } = body
+
+    // Validate required fields
+    if (!email || !email.includes("@")) {
+      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Email is already in use' },
-        { status: 400 }
-      )
-    }
-    const existingUserName = await prisma.user.findUnique({ where: { user_name } })
-    if(existingUserName){
-      return NextResponse.json(
-        { error: 'Full name is already in use' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
     }
 
+    // Generate username from email if not provided
+    let finalUsername = user_name || getUsernameFromEmail(email)
 
-    // ✅ Hash password before saving
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Check if username already exists
+    const existingUsername = await prisma.user.findUnique({
+      where: { user_name: finalUsername },
+    })
 
-    // ✅ Create a new user in the database
-    const newUser = await prisma.user.create({
+    // If username exists, append a random number
+    if (existingUsername) {
+      finalUsername = `${finalUsername}${Math.floor(1000 + Math.random() * 9000)}`
+    }
+
+    // Create temporary password
+    const tempPassword = Math.random().toString(36).slice(-10)
+
+    // Create team member
+    const newTeamMember = await prisma.user.create({
       data: {
-        user_name,
         email,
-        password: hashedPassword,
-        role: 'team_member',
-        profile_image,
-        team_role,
-        department
-      }
+        user_name: finalUsername,
+        password: tempPassword,
+        role: "team_member",
+        team_role: team_role || null,
+        department: department || null,
+      },
     })
 
-    // ✅ Generate a JWT-based password reset link (valid for 1 hour)
-    const resetToken = jwt.sign({ email }, process.env.JWT_SECRET!, {
-      expiresIn: '1h'
-    })
-    const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`
+    // Generate verification token
+    const verificationToken = generateToken(
+      {
+        userId: newTeamMember.id,
+        email: newTeamMember.email,
+        purpose: "verification",
+      },
+      "24h",
+    )
 
-    // ✅ Send Welcome Email with Reset Link
-    const transporter = nodemailer.createTransport({
-      service: 'Gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    })
+    // Send verification email
+    const emailSent = await sendVerificationEmail(email, verificationToken)
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Welcome!',
-      html: `
-				<h1>Hello ${user_name},</h1>
-<p>Welcome to the team! 🎉</p>
-<p>Your account has been successfully created as a <strong>Team Member</strong>.</p>
-<p>To activate your account and set a password, please click the button below:</p>
-<a href="${resetLink}" target="_blank" style="display:inline-block;padding:10px 20px;background:#28a745;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold;">
-  Set Your Password
-</a>
-<p>This link is valid for <strong>1 hour</strong>.</p>
-<p>If you weren’t expecting this email, you can safely ignore it.</p>
-<br />
-<p>We’re excited to have you on board!</p>
-<p>Best regards,<br/>The Team</p>`
+    if (!emailSent) {
+      return NextResponse.json(
+        {
+          success: true,
+          team_member: {
+            id: newTeamMember.id,
+            email: newTeamMember.email,
+            user_name: newTeamMember.user_name,
+            role: newTeamMember.role,
+            team_role: newTeamMember.team_role,
+            department: newTeamMember.department,
+          },
+          warning: "Team member created but verification email could not be sent",
+        },
+        { status: 201 },
+      )
     }
-
-    await transporter.sendMail(mailOptions)
 
     return NextResponse.json(
-      { success: 'User created and password setup email sent!', user: newUser },
-      { status: 201 }
+      {
+        success: true,
+        team_member: {
+          id: newTeamMember.id,
+          email: newTeamMember.email,
+          user_name: newTeamMember.user_name,
+          role: newTeamMember.role,
+          team_role: newTeamMember.team_role,
+          department: newTeamMember.department,
+        },
+        message: "Team member created successfully. Verification email sent.",
+      },
+      { status: 201 },
     )
   } catch (error) {
-    console.error('Error creating user:', error)
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    )
+    console.error("Team member creation error:", error)
+    return NextResponse.json({ error: "Failed to create team member" }, { status: 500 })
   }
 }

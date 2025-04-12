@@ -26,7 +26,12 @@ model User {
   updated_at    DateTime?
   verified      Boolean   @default(false)
 
+  // Customer relationship (one customer can have many projects)
   projects         Project[]      @relation("CustomerProjects")
+
+  // Team member relationship (many team members can be assigned to many projects)
+  assignedProjects ProjectTeamMember[]
+
   tasks            Task[]         @relation("AssignedTasks")
   feedbacks        Feedback[]
   payments         Payment[]
@@ -61,7 +66,12 @@ model Project {
   total_tasks            Int       @default(0)
   completed_tasks        Int       @default(0)
 
+  // Customer relationship
   customer   User        @relation("CustomerProjects", fields: [customer_id], references: [id])
+
+  // Team members relationship
+  teamMembers ProjectTeamMember[]
+
   tasks      Task[]
   feedbacks  Feedback[]
   iterations Iteration[]
@@ -70,7 +80,21 @@ model Project {
   files      File[]
 }
 
+// Join table for the many-to-many relationship between Users (team members) and Projects
+model ProjectTeamMember {
+  id         String   @id @default(uuid())
+  project_id String
+  user_id    String
+  role       String?  // Role in this specific project
+  joined_at  DateTime @default(now())
 
+  // Relations
+  project    Project  @relation(fields: [project_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
+
+  // Composite unique constraint to prevent duplicate assignments
+  @@unique([project_id, user_id])
+}
 
 model Task {
   id          String    @id @default(uuid())

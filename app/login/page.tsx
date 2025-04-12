@@ -2,7 +2,7 @@
 
 import type React from "react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Layers, Loader2, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuthStore } from "@/lib/stores/auth-store"
 
@@ -25,9 +25,7 @@ const fadeIn = {
 }
 
 export default function LoginPage() {
-
-
-  const { signIn, isLoading } = useAuthStore()
+  const { signIn, isLoading, error, clearError } = useAuthStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
@@ -42,11 +40,25 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Clear any auth store errors when component unmounts
+  useEffect(() => {
+    return () => {
+      clearError()
+    }
+  }, [clearError])
+
+  // Update form error if auth store has an error
+  useEffect(() => {
+    if (error) {
+      setFormError(error)
+    }
+  }, [error])
+
   const validateForm = () => {
     const newErrors: {
-      email: string | null;
-      password: string | null;
-  } = {
+      email: string | null
+      password: string | null
+    } = {
       email: null,
       password: null,
     }
@@ -95,16 +107,21 @@ export default function LoginPage() {
       return
     }
 
-const res = await signIn(email,password)
-if (!res.error) {
-  toast({
-    title: "Login successful",
-    description: "Welcome back to Webstack!",
-  })
-  router.push("/app")
-}else{
-  setFormError(res.error)
-}
+    // Clear any previous errors
+    setFormError(null)
+
+    const res = await signIn(email, password)
+    if (!res.error) {
+      toast({
+        title: "Login successful",
+        description: "Welcome back to Webstack!",
+      })
+
+      // Redirect to dashboard after successful login
+      router.push("/app")
+    } else {
+      setFormError(res.error)
+    }
   }
 
   return (
@@ -250,11 +267,6 @@ if (!res.error) {
                   type="submit"
                   className="w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
                   disabled={isLoading}
-                  onClick={() => {
-                    if (!validateForm()) {
-                      // Prevent default form submission if validation fails
-                    }
-                  }}
                 >
                   {isLoading ? (
                     <>

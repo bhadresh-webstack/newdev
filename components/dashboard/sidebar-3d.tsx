@@ -123,7 +123,7 @@ export function Sidebar3D ({
   onMobileClose
 }: SidebarProps) {
 
-  const { user, profile, signOut } = useAuthStore()
+  const { user, signOut } = useAuthStore()
 
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
@@ -391,7 +391,7 @@ export function Sidebar3D ({
             <div className='flex items-center gap-3'>
               <Avatar className='h-10 w-10 border-2 border-primary/20'>
                 <AvatarImage
-                  src={profile?.profile_image || undefined}
+                  src={user?.profile_image || undefined}
                   alt={userInitials}
                 />
                 <AvatarFallback className='bg-gradient-to-br from-primary to-purple-600 text-white'>

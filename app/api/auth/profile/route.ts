@@ -1,43 +1,52 @@
-import { NextResponse } from "next/server";
-// import { PrismaClient } from "@prisma/client";
-import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma/client";
+import { type NextRequest, NextResponse } from "next/server"
+import { PrismaClient } from "@prisma/client"
+import { verifyToken } from "@/lib/auth-utils"
 import { cookies } from "next/headers"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"; // Ensure using env variable
+const prisma = new PrismaClient()
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // ✅ Extract token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth_token")?.value;
+    // Get token from cookies
+    const token = cookies().get("auth_token")?.value
 
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    // ✅ Verify JWT Token
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 403 });
+    // Verify token
+    const decoded = verifyToken(token)
+
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
     }
 
-    // ✅ Fetch user from database
+    // Find user
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, user_name: true, email: true, role: true, profile_image: true },
-    });
+      select: {
+        id: true,
+        user_name: true,
+        email: true,
+        role: true,
+        team_role: true,
+        department: true,
+        profile_image: true,
+        created_at: true,
+        verified: true,
+      },
+    })
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ user }, { status: 200 });
-
+    return NextResponse.json({
+      success: true,
+      user,
+    })
   } catch (error) {
-    console.error("Error fetching user profile:", error);
-    return NextResponse.json({ error: "Failed to fetch user data" }, { status: 500 });
+    console.error("Profile fetch error:", error)
+    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 })
   }
 }

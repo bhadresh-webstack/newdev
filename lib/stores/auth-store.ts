@@ -1,195 +1,267 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { apiRequest } from '../useApi'
-import { ENDPOINT } from '../api/end-point'
+import { create } from "zustand"
+import { apiRequest } from "../useApi"
+// import { ENDPOINT } from "../constants/endpoints"
+
+// Import the server action
+import { getServerSideProfile } from "@/lib/server/auth-actions"
+import { ENDPOINT } from "../api/end-point"
 
 type AuthState = {
   user: any | null
-  profile: any | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
 
   // Actions
-  initialize: () => Promise<void>
-  signIn: (
-    email: string,
-    password: string
-  ) => Promise<{ data: any | ''; error: any | null }>
-  signUp: (email: string) => Promise<{ data: any | ''; error: any | null }>
+  initialize: () => Promise<boolean>
+  signIn: (email: string, password: string) => Promise<{ data: any | null; error: string | null }>
+  signUp: (email: string, userName?: string) => Promise<{ data: any | null; error: string | null }>
   signOut: () => Promise<void>
-  forgotPassword: (email: string) => Promise<{ error: any | null }>
-  resetPassword: (
-    token: string,
-    newPassword: string
-  ) => Promise<{ error: any | null }>
+  forgotPassword: (email: string) => Promise<{ error: string | null }>
+  resetPassword: (token: string, newPassword: string) => Promise<{ error: string | null }>
+  verifyToken: (token: string) => Promise<{ data: any | null; error: string | null }>
   loadProfile: () => Promise<void>
   clearError: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      profile: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
 
-      // ✅ Initialize Session on Page Load
-      initialize: async () => {
-        try {
-          set({ isLoading: true })
+  // ✅ Initialize Session on Page Load
+  initialize: async () => {
+    try {
+      set({ isLoading: true })
 
-          // ✅ Check if user is already logged in
-          const response = await apiRequest('GET', ENDPOINT.AUTH.getUser)
+      const result = await getServerSideProfile()
 
-          if (response?.data?.user) {
-            set({
-              user: response.data.user,
-              profile: response.data.user,
-              isAuthenticated: true
-            })
-          }
-
-          set({ isLoading: false })
-        } catch (error) {
-          console.error('Auth initialization failed:', error)
-          set({
-            isAuthenticated: false,
-            user: null,
-            profile: null,
-            isLoading: false
-          })
-        }
-      },
-
-      // ✅ Sign In
-      signIn: async (email, password) => {
-        set({ isLoading: true, error: null })
-
-        const response = await apiRequest('POST', ENDPOINT.AUTH.signIn, {
-          email,
-          password
-        })
-
-        if (response.error) {
-          set({ isLoading: false, error: response.error })
-          return { data: '', error: response.error }
-        }
-
+      if (result.success && result.user) {
         set({
-          user: response?.data?.user,
+          user: result.user,
           isAuthenticated: true,
           isLoading: false,
-          error: null
+          error: null,
         })
-
-        await get().loadProfile()
-
-        return { data: response?.data || '', error: null }
-      },
-
-      // ✅ Sign Up
-      signUp: async email => {
-        set({ isLoading: true, error: null })
-
-        const response = await apiRequest('POST', ENDPOINT.AUTH.signUp, {
-          user_name: email.split('@')[0],
-          email,
-          password: '123456789'
-        })
-
-        if (response.error) {
-          set({ isLoading: false, error: response.error })
-          return { data: '', error: response.error }
-        }
-
+        return true
+      } else {
         set({
-          user: response?.data?.user,
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: result.error || null,
+        })
+        return false
+      }
+    } catch (error) {
+      console.error("Failed to initialize auth:", error)
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: "Authentication failed",
+      })
+      return false
+    }
+  },
+
+  // ✅ Sign In
+  signIn: async (email, password) => {
+    set({ isLoading: true, error: null })
+
+    try {
+      const { data, error } = await apiRequest("POST", ENDPOINT.AUTH.signIn, {
+        email,
+        password,
+      })
+
+      if (error) {
+        set({ isLoading: false, error })
+        return { data: null, error }
+      }
+
+      // After successful sign in, load the profile directly from the database
+      const profileResult = await getServerSideProfile()
+
+      if (profileResult.success && profileResult.user) {
+        set({
+          user: profileResult.user,
           isAuthenticated: true,
           isLoading: false,
-          error: null
+          error: null,
         })
-
-        await get().loadProfile()
-
-        return { data: response?.data || '', error: null }
-      },
-
-      // ✅ Forgot Password
-      forgotPassword: async email => {
-        set({ isLoading: true, error: null })
-
-        const response = await apiRequest('POST', ENDPOINT.AUTH.forgoPassword, {
-          email
+      } else {
+        // If we can't get the profile, still set the user from the sign in response
+        set({
+          user: data?.user,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
         })
+      }
 
-        set({ isLoading: false, error: response.error })
+      return { data, error: null }
+    } catch (error: any) {
+      console.error("Sign in error:", error)
+      const errorMessage = error.message || "Failed to sign in"
+      set({ isLoading: false, error: errorMessage })
+      return { data: null, error: errorMessage }
+    }
+  },
 
-        return { error: response.error || null }
-      },
+  // ✅ Sign Up
+  signUp: async (email, userName) => {
+    set({ isLoading: true, error: null })
 
-      // ✅ Reset Password
-      resetPassword: async (token, newPassword) => {
-        set({ isLoading: true, error: null })
+    try {
+      const { data, error } = await apiRequest("POST", ENDPOINT.AUTH.signUp, {
+        email,
+        user_name: userName || email.split("@")[0],
+      })
 
-        const response = await apiRequest(
-          'POST',
-          ENDPOINT.AUTH.updatePassword,
-          { token, newPassword }
-        )
+      if (error) {
+        set({ isLoading: false, error })
+        return { data: null, error }
+      }
 
-        set({ isLoading: false, error: response.error })
+      set({ isLoading: false, error: null })
+      return { data, error: null }
+    } catch (error: any) {
+      console.error("Sign up error:", error)
+      const errorMessage = error.message || "Failed to sign up"
+      set({ isLoading: false, error: errorMessage })
+      return { data: null, error: errorMessage }
+    }
+  },
 
-        return { error: response.error || null }
-      },
+  // ✅ Verify Token
+  verifyToken: async (token) => {
+    set({ isLoading: true, error: null })
 
-      // ✅ Load Profile
-      loadProfile: async () => {
-        try {
-          const response = await apiRequest('GET', ENDPOINT.AUTH.getUser)
+    try {
+      const { data, error } = await apiRequest("POST", ENDPOINT.AUTH.verifyToken, { token })
 
-          if (response.data.user) {
-            set({
-              profile: response.data.user,
-              user: response.data.user,
-              isAuthenticated: true
-            })
-          }
-        } catch (error) {
-          console.error('Error loading profile:', error)
-          set({ isAuthenticated: false, user: null, profile: null })
-        }
-      },
+      set({ isLoading: false })
 
-      // ✅ Logout
-      signOut: async () => {
-        set({ isLoading: true })
+      if (error) {
+        return { data: null, error }
+      }
 
-        const response = await apiRequest('POST', ENDPOINT.AUTH.signOut)
+      return { data, error: null }
+    } catch (error: any) {
+      console.error("Token verification error:", error)
+      const errorMessage = error.message || "Failed to verify token"
+      set({ isLoading: false })
+      return { data: null, error: errorMessage }
+    }
+  },
 
-        if (!response.error) {
-          set({
-            user: null,
-            profile: null,
-            isAuthenticated: false,
-            isLoading: false
-          })
+  // ✅ Forgot Password
+  forgotPassword: async (email) => {
+    set({ isLoading: true, error: null })
 
-          window.location.href = '/login'
-        }
-      },
+    try {
+      const { error } = await apiRequest("POST", ENDPOINT.AUTH.forgotPassword, { email })
 
-      // ✅ Clear Error
-      clearError: () => set({ error: null })
-    }),
-    {
-      name: 'auth-storage',
-      partialize: state => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated
+      set({ isLoading: false, error: error || null })
+      return { error: error || null }
+    } catch (error: any) {
+      console.error("Forgot password error:", error)
+      const errorMessage = error.message || "Failed to process forgot password request"
+      set({ isLoading: false, error: errorMessage })
+      return { error: errorMessage }
+    }
+  },
+
+  // ✅ Reset Password
+  resetPassword: async (token, newPassword) => {
+    set({ isLoading: true, error: null })
+
+    try {
+      const { error } = await apiRequest("POST", ENDPOINT.AUTH.resetPassword, {
+        token,
+        password: newPassword,
+      })
+
+      set({ isLoading: false, error: error || null })
+      return { error: error || null }
+    } catch (error: any) {
+      console.error("Reset password error:", error)
+      const errorMessage = error.message || "Failed to reset password"
+      set({ isLoading: false, error: errorMessage })
+      return { error: errorMessage }
+    }
+  },
+
+  // ✅ Load Profile
+  loadProfile: async () => {
+    try {
+      set({ isLoading: true })
+
+      const profileResult = await getServerSideProfile()
+
+      if (profileResult.success && profileResult.user) {
+        set({
+          user: profileResult.user,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        })
+      } else {
+        set({
+          isAuthenticated: false,
+          user: null,
+          isLoading: false,
+          error: profileResult.error || null,
+        })
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error)
+      set({
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+        error: "Failed to load profile",
       })
     }
-  )
-)
+  },
+
+  // ✅ Logout
+  signOut: async () => {
+    set({ isLoading: true })
+
+    try {
+      const { error } = await apiRequest("POST", ENDPOINT.AUTH.signOut)
+
+      // Even if there's an error, we should still clear the local state
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
+
+      // Redirect to login page
+      if (typeof window !== "undefined") {
+        window.location.href = "/login"
+      }
+    } catch (error) {
+      console.error("Sign out error:", error)
+
+      // Still clear the state even if there's an error
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
+
+      // Redirect to login page
+      if (typeof window !== "undefined") {
+        window.location.href = "/login"
+      }
+    }
+  },
+
+  // ✅ Clear Error
+  clearError: () => set({ error: null }),
+}))

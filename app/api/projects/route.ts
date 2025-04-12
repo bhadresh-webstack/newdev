@@ -34,18 +34,17 @@ export async function GET(request: NextRequest) {
       // Admin can see all projects
       // No additional filters needed
     } else if (role === "team_member") {
-      // Team members can only see projects where they have assigned tasks
-      const projectsWithAssignedTasks = await prisma.task.findMany({
+      // Team members can only see projects where they are assigned via ProjectTeamMember
+      const assignedProjects = await prisma.projectTeamMember.findMany({
         where: {
-          assigned_to: userId,
+          user_id: userId,
         },
         select: {
           project_id: true,
         },
-        distinct: ["project_id"],
       })
 
-      const projectIds = projectsWithAssignedTasks.map((task) => task.project_id)
+      const projectIds = assignedProjects.map((project) => project.project_id)
 
       if (projectIds.length === 0) {
         return NextResponse.json({ projects: [] }, { status: 200 })

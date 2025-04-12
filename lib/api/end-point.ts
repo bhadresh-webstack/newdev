@@ -5,7 +5,10 @@ export const ENDPOINT = {
     allTeamMember: "/api/auth/team-member/all",
     signIn: "/api/auth/signin",
     signOut: "/api/auth/signout",
-    forgoPassword: "/api/auth/forgot-password",
+    forgotPassword: "/api/auth/forgot-password",
+    resetPassword: "/api/auth/reset-password",
+    verifyToken: "/api/auth/verify-token",
+    profile: "/api/auth/profile",
     updatePassword: "/api/auth/update-password",
     getUser: "/api/auth/profile",
   },
@@ -17,6 +20,8 @@ export const ENDPOINT = {
     files: (projectId: string) => `/api/projects/${projectId}/files`,
     feedback: (projectId: string) => `/api/projects/${projectId}/feedback`,
     messages: (projectId: string) => `/api/projects/${projectId}/messages`,
+    teamMembers: (projectId: string) => `/api/projects/${projectId}/team-members`,
+    assignTeamMember: (projectId: string) => `/api/projects/${projectId}/assign-team-member`,
   },
   TASK: {
     base: "/api/tasks",
@@ -26,5 +31,14 @@ export const ENDPOINT = {
     groups: "/api/tasks/groups",
     statusSummary: "/api/tasks/status/summary",
     batchAssign: (userId: string) => `/api/tasks/user/${userId}`,
+  },
+  USER: {
+    base: "/api/users",
+    byId: (id: string) => `/api/users/${id}`,
+    team: "/api/users/team",
+    customers: "/api/users/customers",
+  },
+  FILE: {
+    upload: "/api/upload",
   },
 }

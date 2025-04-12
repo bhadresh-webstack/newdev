@@ -5,18 +5,16 @@ import type React from "react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { ArrowLeft, Layers, Loader2, AlertCircle, CheckCircle } from "lucide-react"
-import { createClient } from "@/lib/auth-service"
+import { ArrowLeft, Layers, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-// Add imports for useSearchParams at the top of the file
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthStore } from "@/lib/stores/auth-store"
 
@@ -81,12 +79,15 @@ const plans = [
 ]
 
 export default function SignupPage() {
+  // Use the auth store for signup functionality
+  const { signUp, isLoading, error: authError, clearError } = useAuthStore()
+  const { toast } = useToast()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const { signUp,isLoading, } = useAuthStore()
-
+  // Form state
   const [email, setEmail] = useState("")
-  // Keep role state but don't expose it in the UI
-  const [role] = useState("customer")
+  const [userName, setUserName] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
   const [errors, setErrors] = useState<{
     email: string | null
@@ -95,22 +96,13 @@ export default function SignupPage() {
   })
   const [isSuccess, setIsSuccess] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  const { toast } = useToast()
-  const supabase = createClient()
-  const router = useRouter()
 
-  // Add a new state for the selected plan after the other state declarations
+  // Plan selection state
   const [selectedPlan, setSelectedPlan] = useState("")
-
-  // Add state for the plans modal
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false)
 
-  // Add this code after the supabase client initialization and before the useEffect
-  const searchParams = useSearchParams()
-
-  // Add this inside the useEffect that checks auth
+  // Check auth status and get plan from URL on component mount
   useEffect(() => {
-    // Simple timeout to simulate checking auth
     const timer = setTimeout(() => {
       setIsCheckingAuth(false)
 
@@ -124,11 +116,22 @@ export default function SignupPage() {
     return () => clearTimeout(timer)
   }, [searchParams])
 
+  // Reset form error when auth store error changes
+  useEffect(() => {
+    if (authError) {
+      setFormError(authError)
+    }
+
+    return () => {
+      // Clear auth store error when component unmounts
+      clearError()
+    }
+  }, [authError, clearError])
+
+  // Form validation
   const validateForm = () => {
-    const newErrors: {
-      email: string | null;
-  } = {
-      email: null,
+    const newErrors = {
+      email: null as string | null,
     }
     let isValid = true
 
@@ -156,7 +159,7 @@ export default function SignupPage() {
     return isValid
   }
 
-  // Update the handleSignup function to check if the email already exists before attempting to create a profile
+  // Handle signup form submission
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -166,16 +169,25 @@ export default function SignupPage() {
     }
 
     setFormError(null)
-    const res = await signUp(email)
-    // Simulate a delay to show loading state
-    if (!res.error) {
+
+    try {
+      // Call the signUp function from auth store
+      const { data, error } = await signUp(email, userName)
+
+      if (error) {
+        setFormError(error)
+        return
+      }
+
+      // Show success toast and set success state
       toast({
-        title: 'Payment successful!',
-        description: "Thank you for your purchase. We'll be in touch shortly."
+        title: 'Registration successful!',
+        description: "Please check your email to verify your account and set your password."
       })
+
       setIsSuccess(true)
-    } else {
-      setFormError(res.error)
+    } catch (err: any) {
+      setFormError(err.message || "An unexpected error occurred. Please try again.")
     }
   }
 
@@ -269,24 +281,16 @@ export default function SignupPage() {
             <CardContent className="space-y-4 text-center">
               <div className="flex justify-center">
                 <div className="rounded-full bg-green-100 p-3">
-                  <svg
-                    className="h-6 w-6 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
               </div>
-              <p className="text-lg font-medium">Payment Successful!</p>
+              <p className="text-lg font-medium">Registration Successful!</p>
               <p className="text-muted-foreground font-light">
-                We've sent a receipt to {email}. Our team will be in touch shortly to begin your project.
+                We've sent a verification email to {email}. Please check your inbox to verify your account and set your password.
               </p>
               <Button
                 className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
-                onClick={() => (window.location.href = "/")}
+                onClick={() => router.push("/")}
               >
                 Return to Home
               </Button>
@@ -320,6 +324,9 @@ export default function SignupPage() {
                         setEmail(e.target.value)
                         if (errors.email) {
                           setErrors({ ...errors, email: null })
+                        }
+                        if (formError) {
+                          setFormError(null)
                         }
                       }}
                     />
@@ -411,10 +418,10 @@ export default function SignupPage() {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing payment...
+                        Processing...
                       </>
                     ) : (
-                      "Make Payment"
+                      "Complete Registration"
                     )}
                   </Button>
                 </motion.div>

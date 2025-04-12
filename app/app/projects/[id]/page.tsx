@@ -147,7 +147,7 @@ export default function ProjectDetailPage() {
           if (isReplacement) {
             // Replace the temporary message with the real one
             return prevMessages.map((m) =>
-              m.id.toString().startsWith("temp-") && m.sender_id === message.sender_id && m.message === message.message
+              m?.id?.toString().startsWith("temp-") && m.sender_id === message.sender_id && m.message === message.message
                 ? { ...message, isTemp: false }
                 : m,
             )

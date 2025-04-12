@@ -1,22 +1,19 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { ArrowLeft, Layers, Loader2, AlertCircle } from "lucide-react"
+import { ArrowLeft, Layers, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuthStore } from "@/lib/stores/auth-store"
+import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
-import axios from "axios"
+import { useAuthStore } from "@/lib/stores/auth-store"
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -28,39 +25,68 @@ const fadeIn = {
 }
 
 export default function ResetPasswordPage() {
-
-  const {resetPassword , isLoading} =useAuthStore()
+  const { verifyToken, resetPassword, isLoading, error, clearError } = useAuthStore()
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [token,setToken] = useState("")
-  // const { updatePassword, isLoading, error, clearError } = useAuthStore()
-  const { toast } = useToast()
+  const [isTokenValid, setIsTokenValid] = useState(false)
+  const [isTokenChecking, setIsTokenChecking] = useState(true)
+  const [tokenError, setTokenError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("")
+
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
 
+  const token = searchParams?.get("token") || ""
 
+  // Clear any auth store errors when component unmounts
   useEffect(() => {
-    // Check if we have the necessary parameters from the email link
-    // if (!searchParams.has("type") || searchParams.get("type") !== "recovery") {
-    const tokenFromUrl = searchParams.get("token")
-    if(!tokenFromUrl){
-      toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid or has expired",
-        variant: "destructive",
-      })
+    return () => {
+      clearError()
     }
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl)
-      // router.replace("/reset-password", undefined);
+  }, [clearError])
+
+  // Update form error if auth store has an error
+  useEffect(() => {
+    if (error) {
+      setFormError(error)
+    }
+  }, [error])
+
+  // Verify token when component mounts
+  useEffect(() => {
+    const checkToken = async () => {
+      if (!token) {
+        setIsTokenChecking(false)
+        setTokenError("Invalid or missing token. Please request a new password reset link.")
+        return
+      }
+
+      try {
+        const { data, error } = await verifyToken(token)
+
+        if (error) {
+          setTokenError(error)
+          setIsTokenValid(false)
+        } else {
+          setIsTokenValid(true)
+          if (data?.email) {
+            setEmail(data.email)
+          }
+        }
+      } catch (err) {
+        setTokenError("Failed to verify token. Please try again.")
+        setIsTokenValid(false)
+      } finally {
+        setIsTokenChecking(false)
+      }
     }
 
-
-    // clearError()
-  // }, [searchParams, toast, clearError])
-  }, [searchParams, toast])
+    checkToken()
+  }, [token, verifyToken])
 
   const validateForm = () => {
     if (!password) {
@@ -68,8 +94,8 @@ export default function ResetPasswordPage() {
       return false
     }
 
-    if (!confirmPassword) {
-      setFormError("Please confirm your password")
+    if (password.length < 8) {
+      setFormError("Password must be at least 8 characters long")
       return false
     }
 
@@ -78,35 +104,37 @@ export default function ResetPasswordPage() {
       return false
     }
 
-    // Password strength validation
-    if (password.length < 8) {
-      setFormError("Password must be at least 8 characters long")
-      return false
-    }
-
     setFormError(null)
     return true
   }
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) {
       return
     }
 
+    const { error } = await resetPassword(token, password)
 
-      // Simulate API delay
-      const res = await resetPassword(token,password)
-      if (!res.error) {
-        setIsSuccess(true)
-        toast({
-          title: "Password updated",
-          description: "Your password has been updated successfully",
-        })
-      } else {
-        setFormError(res.error)
-      }
+    if (!error) {
+      setIsSuccess(true)
+      toast({
+        title: "Password reset successful",
+        description: "Your password has been reset. You can now log in with your new password.",
+      })
+    } else {
+      setFormError(error)
+    }
+  }
+
+  // Show loading state while checking token
+  if (isTokenChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -119,9 +147,9 @@ export default function ResetPasswordPage() {
       >
         <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10"></div>
         <div className="relative z-10">
-          <Link href="/login" className="inline-flex items-center mb-8 hover:text-primary transition-colors">
+          <Link href="/" className="inline-flex items-center mb-8 hover:text-primary transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Login
+            Back to Home
           </Link>
           <div className="flex items-center gap-2 mb-6">
             <Layers className="h-8 w-8 text-primary" />
@@ -130,7 +158,34 @@ export default function ResetPasswordPage() {
             </span>
           </div>
           <h1 className="text-3xl font-medium mb-4">Reset your password</h1>
-          <p className="text-muted-foreground mb-6 max-w-md font-light">Create a new password for your account.</p>
+          <p className="text-muted-foreground mb-6 max-w-md font-light">
+            Create a new password for your account to securely access your projects.
+          </p>
+          <div className="hidden md:block">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 max-w-md"
+              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+            >
+              <motion.blockquote
+                className="text-lg font-normal"
+                animate={{
+                  opacity: [0.9, 1, 0.9],
+                  transition: {
+                    repeat: Number.POSITIVE_INFINITY,
+                    duration: 3,
+                    ease: "easeInOut",
+                  },
+                }}
+              >
+                "Security is our top priority. We ensure your account is protected with strong password policies and
+                regular security updates."
+              </motion.blockquote>
+              <div className="mt-4 font-normal">— Webstack Security Team</div>
+            </motion.div>
+          </div>
         </div>
       </motion.div>
 
@@ -142,76 +197,95 @@ export default function ResetPasswordPage() {
       >
         <Card className="w-full max-w-md border-0 shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-medium">Create new password</CardTitle>
-            <CardDescription className="font-light">Enter a new password for your account</CardDescription>
+            <CardTitle className="text-2xl font-medium">Reset Password</CardTitle>
+            <CardDescription className="font-light">
+              {isTokenValid ? `Create a new password for ${email}` : "Verify your reset token"}
+            </CardDescription>
           </CardHeader>
-          {isSuccess ? (
+
+          {!isTokenValid ? (
+            <CardContent className="space-y-4 text-center">
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{tokenError}</AlertDescription>
+              </Alert>
+              <Button
+                className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
+                onClick={() => router.push("/forgot-password")}
+              >
+                Request New Reset Link
+              </Button>
+              <div className="text-center text-sm font-light mt-4">
+                Remember your password?{" "}
+                <Link href="/login" className="text-primary hover:underline font-normal">
+                  Back to Login
+                </Link>
+              </div>
+            </CardContent>
+          ) : isSuccess ? (
             <CardContent className="space-y-4 text-center">
               <div className="flex justify-center">
                 <div className="rounded-full bg-green-100 p-3">
-                  <svg
-                    className="h-6 w-6 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
               </div>
-              <p className="text-lg font-medium">Password updated</p>
-              <p className="text-muted-foreground font-light">Your password has been updated successfully</p>
+              <p className="text-lg font-medium">Password Reset Successful!</p>
+              <p className="text-muted-foreground font-light">
+                Your password has been reset successfully. You can now log in with your new password.
+              </p>
               <Button
                 className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
                 onClick={() => router.push("/login")}
               >
-                Back to login
+                Go to Login
               </Button>
             </CardContent>
           ) : (
-            <form onSubmit={handleResetPassword}>
+            <form onSubmit={handleSubmit} noValidate>
               <CardContent className="space-y-4">
-                {(formError) && (
+                {formError && (
                   <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{formError }</AlertDescription>
+                    <AlertDescription>{formError}</AlertDescription>
                   </Alert>
                 )}
 
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password</Label>
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
+                  <div className="relative">
                     <Input
                       id="password"
-                      type="password"
-                      className="transition-all border-muted-foreground/20 focus:border-primary"
+                      type={showPassword ? "text" : "password"}
+                      className="transition-all border-muted-foreground/20 focus:border-primary pr-10"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (formError) setFormError(null)
+                      }}
                     />
-                  </motion.div>
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      className="transition-all border-muted-foreground/20 focus:border-primary"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                  </motion.div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    className="transition-all border-muted-foreground/20 focus:border-primary"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value)
+                      if (formError) setFormError(null)
+                    }}
+                  />
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
@@ -219,18 +293,24 @@ export default function ResetPasswordPage() {
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
-                    // disabled={isLoading}
+                    disabled={isLoading}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Updating password...
+                        Resetting password...
                       </>
                     ) : (
-                      "Update password"
+                      "Reset Password"
                     )}
                   </Button>
                 </motion.div>
+                <div className="text-center text-sm font-light">
+                  Remember your password?{" "}
+                  <Link href="/login" className="text-primary hover:underline font-normal">
+                    Back to Login
+                  </Link>
+                </div>
               </CardFooter>
             </form>
           )}

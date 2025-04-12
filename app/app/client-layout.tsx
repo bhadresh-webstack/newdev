@@ -10,12 +10,13 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { ThemeProvider } from "@/components/theme-provider"
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
-  const { initialize, isAuthenticated, profile, isLoading, user, error } = useAuthStore()
+  const { initialize, isAuthenticated, isLoading, user, error } = useAuthStore()
   const [isInitialized, setIsInitialized] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const router = useRouter()
 
+  console.log("user",user)
   // Initialize auth on mount
   useEffect(() => {
     const init = async () => {
@@ -89,11 +90,11 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         >
           <DashboardHeader
             user={
-              profile || {
+              user || {
                 id: "demo-user",
                 full_name: "Demo User",
                 avatar_url: "/placeholder.svg?height=40&width=40",
-                email: "demo@example.com",
+                email: "demo@example11.com",
               }
             }
             className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
@@ -105,4 +106,3 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
     </ThemeProvider>
   )
 }
-

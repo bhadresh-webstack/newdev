@@ -1,54 +1,69 @@
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma/client";
+import { type NextRequest, NextResponse } from "next/server"
+import { comparePasswords, generateToken } from "@/lib/auth-utils"
+import { cookies } from "next/headers"
+import { prisma } from "@/lib/prisma"
 
-
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"; // Use env variable
-
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const body = await request.json()
+    const { email, password } = body
 
-    // ✅ Check if email and password are provided
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // ✅ Find user by email
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    })
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    // ✅ Compare the password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Check if user is verified
+    if (!user.verified) {
+      return NextResponse.json({ error: "Please verify your email before logging in" }, { status: 403 })
+    }
+
+    // Verify password
+    const isPasswordValid = await comparePasswords(password, user.password)
+
     if (!isPasswordValid) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    // ✅ Generate JWT Token
-    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, {
-      expiresIn: "7d", // Token expires in 7 days
-    });
+    // Generate JWT token
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    })
 
-    // ✅ Create HTTP-only Secure Cookie
-    const response = NextResponse.json({
-      message: "Login successful",
-      user: { id: user.id, email: user.email, role: user.role },
-    });
+    // Set cookie - await the cookies() function
+    const cookieStore = cookies()
+    await cookieStore.set({
+      name: "auth_token",
+      value: token,
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    })
 
-    response.headers.append(
-      "Set-Cookie",
-      `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800` // 7 days
-    );
-
-
-    return response;
-
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        user_name: user.user_name,
+        role: user.role,
+      },
+    })
   } catch (error) {
-    console.error("Error during sign-in:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    console.error("Login error:", error)
+    // Provide more specific error message if possible
+    const errorMessage = error instanceof Error ? error.message : "Failed to login"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

@@ -69,7 +69,7 @@ export default function ProjectBudgetForm({ data, updateData }) {
 
   const handleTierSelect = (tierId) => {
     setSelectedTier(tierId)
-    updateData("budget", { ...data, tier: tierId })
+    updateData({ tier: tierId })
   }
 
   return (
@@ -139,7 +139,7 @@ export default function ProjectBudgetForm({ data, updateData }) {
               id="payment-type"
               checked={data.paymentType === "fixed"}
               onCheckedChange={(checked) => {
-                updateData("budget", { ...data, paymentType: checked ? "fixed" : "hourly" })
+                updateData({ paymentType: checked ? "fixed" : "hourly" })
               }}
             />
             <Label htmlFor="payment-type" className="text-sm">
@@ -169,7 +169,7 @@ export default function ProjectBudgetForm({ data, updateData }) {
               max={data.paymentType === "fixed" ? 10000 : 200}
               step={data.paymentType === "fixed" ? 100 : 5}
               onValueChange={(value) => {
-                updateData("budget", { ...data, amount: value[0] })
+                updateData({ amount: value[0] })
               }}
               className="w-full"
             />
@@ -191,4 +191,3 @@ export default function ProjectBudgetForm({ data, updateData }) {
     </div>
   )
 }
-

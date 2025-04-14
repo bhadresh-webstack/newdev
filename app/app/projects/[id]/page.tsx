@@ -1,5 +1,7 @@
 "use client"
 
+import { DialogTrigger } from "@/components/ui/dialog"
+
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
@@ -39,11 +41,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useProjectsStore, type Project } from "@/lib/stores/projects-store"
 import { useTasksStore } from "@/lib/stores/tasks-store"
 import { useAuthStore } from "@/lib/stores/auth-store"
@@ -104,7 +102,7 @@ export default function ProjectDetailPage() {
   // Get functions from stores
   const { getProjectById, updateProject, deleteProject } = useProjectsStore()
   const { fetchTasks, fetchTaskGroups, fetchStatusSummary } = useTasksStore()
-  const { handleUpdateTask } = useTaskOperations()
+  const { handleCreateTask, handleUpdateTask } = useTaskOperations()
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectTasks, setProjectTasks] = useState<TaskType[]>([])
@@ -121,13 +119,17 @@ export default function ProjectDetailPage() {
 
   const userRole = user?.role || "user"
 
+  // Update the state variables to include allTeamMembers and projectTeamMembers
   const [teamMembers, setTeamMembers] = useState([])
+  const [allTeamMembers, setAllTeamMembers] = useState([])
+  const [projectTeamMembers, setProjectTeamMembers] = useState([])
   const [messages, setMessages] = useState([])
   const [files, setFiles] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isAssigningMember, setIsAssigningMember] = useState(false)
 
   // Inside the ProjectDetailPage component, add this socket-related code after the state declarations
   const socket = useRef(null)
@@ -135,6 +137,8 @@ export default function ProjectDetailPage() {
   // Add this effect to initialize SSE connection and message listeners
   useEffect(() => {
     if (projectId && user?.id) {
+      console.log(`Initializing SSE connection for project ${projectId} and user ${user.id}`)
+
       // Initialize SSE connection for this project
       initializeProjectConnection(projectId, user.id)
 
@@ -142,12 +146,17 @@ export default function ProjectDetailPage() {
       const handleNewMessage = (message, isReplacement) => {
         console.log("New message received:", message, isReplacement ? "(replacement)" : "")
 
+        // Skip system messages or messages without proper structure
+        if (!message || message.type === "connection" || !message.message) {
+          return
+        }
+
         // Add the new message to the state if it's not already there
         setMessages((prevMessages) => {
           if (isReplacement) {
             // Replace the temporary message with the real one
             return prevMessages.map((m) =>
-              m?.id?.toString().startsWith("temp-") && m.sender_id === message.sender_id && m.message === message.message
+              m.id.toString().startsWith("temp-") && m.sender_id === message.sender_id && m.message === message.message
                 ? { ...message, isTemp: false }
                 : m,
             )
@@ -158,6 +167,14 @@ export default function ProjectDetailPage() {
             return [...prevMessages, message]
           }
         })
+
+        // Scroll to bottom when new message arrives
+        setTimeout(() => {
+          const messagesContainer = document.getElementById("messages-container")
+          if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight
+          }
+        }, 100)
       }
 
       // Add the message listener
@@ -165,6 +182,7 @@ export default function ProjectDetailPage() {
 
       // Clean up on unmount
       return () => {
+        console.log(`Cleaning up SSE connection for project ${projectId}`)
         removeMessageListener(projectId, handleNewMessage)
         closeProjectConnection(projectId)
       }
@@ -238,7 +256,28 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Function to fetch team members
+  // Add a new function to fetch project team members
+  const getProjectTeamMembers = async () => {
+    setIsLoadingTeam(true)
+    try {
+      const { data, error } = await apiRequest("GET", ENDPOINT.PROJECT.teamMembers(projectId))
+
+      if (error) {
+        console.error("Error fetching project team members:", error)
+        return
+      }
+
+      if (data?.team_members) {
+        setProjectTeamMembers(data.team_members)
+      }
+    } catch (error) {
+      console.error("Error fetching project team members:", error)
+    } finally {
+      setIsLoadingTeam(false)
+    }
+  }
+
+  // Update the getTeamMembers function to fetch all team members
   const getTeamMembers = async () => {
     setIsLoadingTeam(true)
     try {
@@ -251,12 +290,86 @@ export default function ProjectDetailPage() {
       }
 
       if (data?.team_members) {
-        setTeamMembers(data.team_members)
+        setAllTeamMembers(data.team_members)
       }
     } catch (error) {
       console.error("Error fetching team members:", error)
     } finally {
       setIsLoadingTeam(false)
+    }
+  }
+
+  // Add a new function to assign a team member to the project
+  const assignTeamMember = async (userId) => {
+    setIsAssigningMember(true)
+    try {
+      const { data, error } = await apiRequest("POST", ENDPOINT.PROJECT.assignTeamMember(projectId), {
+        user_id: userId,
+      })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      toast({
+        title: "Success",
+        description: "Team member assigned to project successfully",
+      })
+
+      // Refresh project team members
+      await getProjectTeamMembers()
+      return true
+    } catch (error) {
+      console.error("Error assigning team member:", error)
+      toast({
+        title: "Error",
+        description: "Failed to assign team member to project",
+        variant: "destructive",
+      })
+      return false
+    } finally {
+      setIsAssigningMember(false)
+    }
+  }
+
+  // Add a new function to remove a team member from the project
+  const removeTeamMember = async (userId) => {
+    try {
+      const { data, error } = await apiRequest(
+        "DELETE",
+        `${ENDPOINT.PROJECT.assignTeamMember(projectId)}?user_id=${userId}`,
+      )
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      toast({
+        title: "Success",
+        description: "Team member removed from project successfully",
+      })
+
+      // Refresh project team members
+      await getProjectTeamMembers()
+      return true
+    } catch (error) {
+      console.error("Error removing team member:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove team member from project",
+        variant: "destructive",
+      })
+      return false
     }
   }
 
@@ -324,14 +437,17 @@ export default function ProjectDetailPage() {
         },
       }
 
+      // Store the message text before clearing the input
+      const messageText = newMessage
+
       // Add to messages for immediate display
       setMessages((prev) => [...prev, tempMessage])
 
-      // Clear input
+      // Clear input immediately for better UX
       setNewMessage("")
 
       // Send the message
-      const result = await sendMessageToServer(projectId, newMessage, user?.id, project?.customer_id)
+      const result = await sendMessageToServer(projectId, messageText, user?.id, project?.customer_id)
 
       if (!result.success) {
         toast({
@@ -387,7 +503,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Load data when component mounts
+  // Update the useEffect to fetch project team members
   useEffect(() => {
     if (projectId) {
       getProject()
@@ -395,6 +511,7 @@ export default function ProjectDetailPage() {
 
       if (userRole === "admin" || userRole === "team") {
         getTeamMembers()
+        getProjectTeamMembers()
       }
 
       getProjectMessages()
@@ -551,14 +668,11 @@ export default function ProjectDetailPage() {
     }))
   }
 
-  // Add the handleCreateTask function to the component
-  // Add this after the other handler functions:
-
-  // Function to create a new task
-  const handleCreateTask = async (taskData) => {
+  // Function to create a new task - FIXED to use handleCreateTask instead of handleUpdateTask
+  const onCreateNewTask = async (taskData) => {
     try {
-      // Use the task operations hook to create the task
-      const result = await handleUpdateTask(null, taskData)
+      // Use the handleCreateTask function from useTaskOperations
+      const result = await handleCreateTask(taskData)
 
       if (result) {
         toast({
@@ -849,7 +963,7 @@ export default function ProjectDetailPage() {
         </motion.div>
       </motion.div>
 
-      <Tabs defaultValue={userRole === "customer" ? "messages" : "tasks"} className="w-full">
+      <Tabs defaultValue={userRole === "customer" || userRole === "team" ? "messages" : "tasks"} className="w-full">
         <TabsList
           className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} w-full max-w-md h-9`}
         >
@@ -1059,6 +1173,7 @@ export default function ProjectDetailPage() {
           <TabsContent value="team" className="mt-6">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold">Team Members</h2>
+
               <Dialog open={isAddingMember} onOpenChange={setIsAddingMember}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-1">
@@ -1066,63 +1181,69 @@ export default function ProjectDetailPage() {
                     Add Member
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
-                    <DialogTitle>Add Team Member</DialogTitle>
+                    <DialogTitle>Assign Team Member</DialogTitle>
                     <DialogDescription>
-                      Add a new team member to this project. They will have access to project resources.
+                      Select team members to assign to this project. They will have access to project resources.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
-                        Name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={newMember.name}
-                        onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                        className="col-span-3"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="email" className="text-right">
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        value={newMember.email}
-                        onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                        className="col-span-3"
-                        placeholder="john.doe@example.com"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="role" className="text-right">
-                        Role
-                      </Label>
-                      <Select
-                        value={newMember.role}
-                        onValueChange={(value) => setNewMember({ ...newMember, role: value })}
-                      >
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Project Manager">Project Manager</SelectItem>
-                          <SelectItem value="UI/UX Designer">UI/UX Designer</SelectItem>
-                          <SelectItem value="Frontend Developer">Frontend Developer</SelectItem>
-                          <SelectItem value="Backend Developer">Backend Developer</SelectItem>
-                          <SelectItem value="QA Engineer">QA Engineer</SelectItem>
-                          <SelectItem value="DevOps Engineer">DevOps Engineer</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="py-4">
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {allTeamMembers.length > 0 ? (
+                        <div className="space-y-2">
+                          {allTeamMembers.map((member) => {
+                            // Check if member is already assigned to this project
+                            const isAssigned = projectTeamMembers.some((pm) => pm.id === member.id)
+
+                            return (
+                              <div
+                                key={member.id}
+                                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={member.profile_image || undefined} alt={member.user_name} />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                                      {getInitials(member.user_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">{member.user_name}</p>
+                                    <p className="text-xs text-muted-foreground">{member.team_role || "Team Member"}</p>
+                                  </div>
+                                </div>
+                                {isAssigned ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                  >
+                                    Assigned
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => assignTeamMember(member.id)}
+                                    disabled={isAssigningMember}
+                                  >
+                                    {isAssigningMember ? "Assigning..." : "Assign"}
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-muted-foreground">No team members available</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit" onClick={handleAddMember}>
-                      Add to Project
+                    <Button variant="outline" onClick={() => setIsAddingMember(false)}>
+                      Close
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1132,8 +1253,8 @@ export default function ProjectDetailPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {teamMembers.length > 0 ? (
-                    teamMembers.map((member, index) => (
+                  {projectTeamMembers.length > 0 ? (
+                    projectTeamMembers.map((member, index) => (
                       <motion.div
                         key={member.id}
                         initial={{ opacity: 0, y: 20 }}
@@ -1141,17 +1262,31 @@ export default function ProjectDetailPage() {
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                       >
                         <Card>
-                          <CardContent className="p-3 flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={member.profile_image || undefined} alt={member.user_name} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
-                                {getInitials(member.user_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-sm">{member.user_name}</p>
-                              <p className="text-xs text-muted-foreground">{member.role || "Team Member"}</p>
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={member.profile_image || undefined} alt={member.user_name} />
+                                <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+                                  {getInitials(member.user_name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">{member.user_name}</p>
+                                <p className="text-xs text-muted-foreground">{member.role || "Team Member"}</p>
+                              </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeTeamMember(member.id)
+                              }}
+                              title="Remove from project"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </CardContent>
                         </Card>
                       </motion.div>
@@ -1173,32 +1308,21 @@ export default function ProjectDetailPage() {
               <h2 className="text-lg font-semibold">Project Messages</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Communicate with team members and clients</p>
             </div>
-            <Button
-              size="sm"
-              className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Message
-            </Button>
           </div>
 
-          <Card className="border-none shadow-md overflow-hidden">
+          <Card className="border shadow-sm overflow-hidden">
             <CardContent className="p-0">
-              {/* Replace the messages container in the Messages tab with this updated version */}
-              {/* Find the section that starts with: <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"> */}
-              {/* And replace it with: */}
-
               <div
-                className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"
+                className="h-[450px] overflow-y-auto p-0 bg-slate-50/50 dark:bg-slate-900/50"
                 id="messages-container"
               >
-                <div className="space-y-4">
+                <div className="px-4 py-3">
                   {messages.length > 0 ? (
                     groupMessagesByDate(messages).map((group, groupIndex) => (
-                      <div key={group.date} className="space-y-4">
+                      <div key={group.date} className="space-y-3 mb-6">
                         {/* Date header */}
                         <div className="flex items-center justify-center my-4">
-                          <div className="bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-slate-200">
+                          <div className="bg-slate-200/70 dark:bg-slate-800/70 px-3 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300">
                             {group.date}
                           </div>
                         </div>
@@ -1206,7 +1330,8 @@ export default function ProjectDetailPage() {
                         {/* Messages for this date */}
                         {group.messages.map((message, index) => {
                           const isCurrentUser = message.sender?.id === user?.id
-                          const isTemp = message.isTemp // Update this line
+                          const isTemp = message.isTemp
+                          const showSender = index === 0 || group.messages[index - 1]?.sender?.id !== message.sender?.id
 
                           return (
                             <motion.div
@@ -1214,10 +1339,12 @@ export default function ProjectDetailPage() {
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.2, delay: index * 0.05 }}
-                              className={`flex gap-3 ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                              className={`flex gap-2 ${isCurrentUser ? "justify-end" : "justify-start"} ${
+                                !showSender && !isCurrentUser ? "pl-10" : ""
+                              } ${!showSender && isCurrentUser ? "pr-10" : ""} mb-3`}
                             >
-                              {!isCurrentUser && (
-                                <Avatar className="h-8 w-8 mt-1 ring-2 ring-background">
+                              {!isCurrentUser && showSender && (
+                                <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
                                   <AvatarImage
                                     src={message.sender?.profile_image || undefined}
                                     alt={message.sender?.user_name || "User"}
@@ -1225,76 +1352,57 @@ export default function ProjectDetailPage() {
                                   <AvatarFallback
                                     className={`text-xs ${
                                       message.sender?.role === "admin" || message.sender?.role === "team_member"
-                                        ? "bg-gradient-to-br from-indigo-500 to-purple-600"
-                                        : "bg-gradient-to-br from-primary to-purple-600"
-                                    } text-white`}
+                                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                    }`}
                                   >
                                     {getInitials(message.sender?.user_name || "User")}
                                   </AvatarFallback>
                                 </Avatar>
                               )}
+                              {isCurrentUser && showSender && (
+                                <Avatar className="h-8 w-8 mt-1 flex-shrink-0 order-2 ml-2">
+                                  <AvatarImage src={user?.profile_image || undefined} alt={user?.name || "You"} />
+                                  <AvatarFallback className="bg-primary text-white text-xs">
+                                    {getInitials(user?.name || "You")}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
 
                               <div
-                                className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"} max-w-[75%]`}
+                                className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"} max-w-[80%]`}
                               >
-                                {!isCurrentUser && (
+                                {showSender && !isCurrentUser && (
                                   <div className="flex items-center gap-2 mb-1">
-                                    {/* User name and role display logic */}
-                                    {userRole === "team_member" && (
-                                      <>
-                                        {message.sender?.role === "team_member" && (
-                                          <p className="text-xs font-medium">
-                                            {message.sender?.user_name || "Team Member"}
-                                          </p>
-                                        )}
-                                        {message.sender?.role && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"
-                                          >
-                                            {message.sender.role === "admin"
-                                              ? "Admin"
-                                              : message.sender.role === "customer"
-                                                ? "Client"
-                                                : null}
-                                          </Badge>
-                                        )}
-                                      </>
+                                    <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>
+                                    {message.sender?.role && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                                      >
+                                        {message.sender.role === "admin"
+                                          ? "Admin"
+                                          : message.sender.role === "team_member"
+                                            ? "Team"
+                                            : "Client"}
+                                      </Badge>
                                     )}
-                                    {userRole === "admin" && (
-                                      <>
-                                        <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>
-                                        {message.sender?.role && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5"
-                                          >
-                                            {message.sender.role === "admin"
-                                              ? "Admin"
-                                              : message.sender.role === "team_member"
-                                                ? "Team"
-                                                : "Client"}
-                                          </Badge>
-                                        )}
-                                      </>
-                                    )}
-                                    {userRole === "customer" && <></>}
                                   </div>
                                 )}
 
                                 <div
-                                  className={`rounded-2xl px-4 py-2 ${
+                                  className={`rounded-lg px-3 py-2 ${
                                     isCurrentUser
-                                      ? `bg-primary text-primary-foreground rounded-tr-none ${
+                                      ? `bg-primary text-white dark:bg-primary dark:text-white ${
                                           isTemp ? "opacity-70" : ""
                                         }`
-                                      : "bg-muted rounded-tl-none"
+                                      : "bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700"
                                   }`}
                                 >
                                   <p className="text-sm whitespace-pre-wrap">{message.message}</p>
                                   <div className="flex items-center justify-end gap-1 mt-1">
                                     <p
-                                      className={`text-[10px] ${isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                                      className={`text-[10px] ${isCurrentUser ? "text-white/70" : "text-muted-foreground"}`}
                                     >
                                       {new Date(message.created_at).toLocaleTimeString([], {
                                         hour: "2-digit",
@@ -1302,33 +1410,27 @@ export default function ProjectDetailPage() {
                                       })}
                                     </p>
                                     {isTemp && (
-                                      <span className="text-[10px] italic">{isCurrentUser ? "sending..." : ""}</span>
+                                      <span className="text-[10px] italic text-white/70">
+                                        {isCurrentUser ? "sending..." : ""}
+                                      </span>
                                     )}
                                     {message.sendFailed && (
-                                      <span className="text-[10px] text-red-500 italic">failed to send</span>
+                                      <span className="text-[10px] text-red-300 italic">failed to send</span>
                                     )}
                                   </div>
                                 </div>
                               </div>
-
-                              {isCurrentUser && (
-                                <Avatar className="h-8 w-8 mt-1 ring-2 ring-background">
-                                  <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
-                                    {getInitials(user?.name || "You")}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
                             </motion.div>
                           )
                         })}
                       </div>
                     ))
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                      <div className="rounded-full bg-primary/10 p-3 mb-3">
-                        <MessageSquare className="h-6 w-6 text-primary" />
+                    <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                      <div className="rounded-full bg-primary/5 p-3 mb-3">
+                        <MessageSquare className="h-6 w-6 text-primary/70" />
                       </div>
-                      <h3 className="text-lg font-medium mb-1">No messages yet</h3>
+                      <h3 className="text-base font-medium mb-1">No messages yet</h3>
                       <p className="text-muted-foreground text-sm max-w-md mb-4">
                         Start the conversation with your team or client to discuss project details.
                       </p>
@@ -1338,44 +1440,49 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Message input area with styling */}
-              <div className="border-t bg-card p-4">
-                <div className="flex gap-3">
-                  <Avatar className="h-8 w-8 mt-1">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
+              <div className="border-t bg-white dark:bg-slate-900 p-3">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
                       {getInitials(user?.name || "You")}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <div className="relative">
-                      <textarea
-                        className="w-full p-3 pr-12 rounded-lg border border-input bg-background min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm resize-none"
-                        placeholder="Type your message here..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        rows={3}
-                      ></textarea>
-                      <div className="absolute bottom-2 right-2 flex gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full hover:bg-primary/10"
-                        >
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim()}
-                        className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 pr-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary/30 text-sm"
+                      placeholder="Type your message here..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          if (newMessage.trim()) sendMessage()
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim()}
+                      className="h-7 w-7 absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90 text-white"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="rotate-45"
                       >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        Send Message
-                      </Button>
-                    </div>
+                        <path d="m5 12 14-9-9 14v-5H5Z" />
+                      </svg>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1438,7 +1545,7 @@ export default function ProjectDetailPage() {
       <NewTaskForm
         isOpen={isNewTaskFormOpen}
         onClose={() => setIsNewTaskFormOpen(false)}
-        onSubmit={handleCreateTask}
+        onSubmit={onCreateNewTask}
         initialProjectId={projectId}
       />
 

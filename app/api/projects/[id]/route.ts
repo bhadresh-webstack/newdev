@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
-
-const prisma = new PrismaClient()
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
+import { prisma } from "@/lib/prisma" // Importar la instancia singleton en lugar de crear una nueva
 
 // GET a specific project by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -65,7 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (role === "admin") {
       // Admin can access any project
     } else if (role === "team_member") {
-      // Team member can access if they have assigned tasks
+      // Team member can access if they have assigned tasks OR if they're part of the project team
       const hasAssignedTask = await prisma.task.findFirst({
         where: {
           project_id: projectId,
@@ -73,7 +70,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
       })
 
-      if (!hasAssignedTask) {
+      // Check if they're part of the project team
+      const isProjectTeamMember = await prisma.projectTeamMember.findFirst({
+        where: {
+          project_id: projectId,
+          user_id: userId,
+        },
+      })
+
+      // Allow access if either condition is true
+      if (!hasAssignedTask && !isProjectTeamMember) {
         return NextResponse.json({ error: "Unauthorized to access this project" }, { status: 403 })
       }
     } else if (role === "customer") {
@@ -114,52 +120,40 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
     }
 
-    // Check if user has permission to update this project
-    if (role === "admin") {
-      // Admin can update any project
-    } else if (role === "team_member") {
-      // Team members can only update certain fields
-      const allowedFields = ["status", "progress_percentage", "description", "technical_requirements"]
-
-      // Filter out fields that team members are not allowed to update
-      Object.keys(body).forEach((key) => {
-        if (!allowedFields.includes(key)) {
-          delete body[key]
-        }
-      })
-
-      // Check if they have assigned tasks in this project
-      const hasAssignedTask = await prisma.task.findFirst({
-        where: {
-          project_id: projectId,
-          assigned_to: userId,
-        },
-      })
-
-      if (!hasAssignedTask) {
-        return NextResponse.json({ error: "Unauthorized to update this project" }, { status: 403 })
-      }
-    } else if (role === "customer") {
-      // Customers can only update their own projects and only certain fields
-      if (project.customer_id !== userId) {
-        return NextResponse.json({ error: "Unauthorized to update this project" }, { status: 403 })
-      }
-
-      // Customers can only update certain fields
-      const allowedFields = ["description", "deliverables"]
-
-      // Filter out fields that customers are not allowed to update
-      Object.keys(body).forEach((key) => {
-        if (!allowedFields.includes(key)) {
-          delete body[key]
-        }
-      })
+    // Only admin can update projects
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized. Only admins can update projects." }, { status: 403 })
     }
 
-    // Update the project
+    // Filter out fields that don't exist in the Prisma schema
+    // Only include fields that are known to exist in the Project model
+    const validFields = {
+      title: body.title,
+      description: body.description,
+      status: body.status,
+      pricing_tier: body.pricing_tier,
+      technical_requirements: body.technical_requirements,
+      required_skills: body.required_skills,
+      deliverables: body.deliverables,
+      budget: body.budget,
+      payment_type: body.payment_type,
+      start_date: body.start_date ? new Date(body.start_date) : undefined,
+      duration_days: body.duration_days,
+      priority: body.priority,
+      visibility: body.visibility,
+      progress_percentage: body.progress_percentage,
+      total_tasks: body.total_tasks,
+      completed_tasks: body.completed_tasks,
+      updated_at: new Date(),
+    }
+
+    // Remove undefined fields
+    const updateData = Object.fromEntries(Object.entries(validFields).filter(([_, value]) => value !== undefined))
+
+    // Update the project with filtered data
     const updatedProject = await prisma.project.update({
       where: { id: projectId },
-      data: body,
+      data: updateData,
     })
 
     return NextResponse.json(updatedProject, { status: 200 })
@@ -194,7 +188,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Only admin can delete projects
     if (role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized to delete projects" }, { status: 403 })
+      return NextResponse.json({ error: "Unauthorized. Only admins can delete projects." }, { status: 403 })
     }
 
     // Delete all related records first (to avoid foreign key constraints)

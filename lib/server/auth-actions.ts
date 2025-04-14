@@ -3,6 +3,7 @@
 import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
+import { redirect } from "next/navigation"
 
 /**
  * Server-side function to fetch user profile directly from database
@@ -15,6 +16,11 @@ export async function getServerSideProfile() {
     const token = await cookieStore.get("auth_token")?.value
 
     if (!token) {
+      // Delete the auth_token cookie
+      cookieStore.delete("auth_token")
+      // Redirect to login page
+      redirect("/login")
+
       return {
         success: false,
         error: "Not authenticated",
@@ -26,6 +32,11 @@ export async function getServerSideProfile() {
     const decoded = verifyToken(token)
 
     if (!decoded || !decoded.userId) {
+      // Delete the auth_token cookie
+      cookieStore.delete("auth_token")
+      // Redirect to login page
+      redirect("/login")
+
       return {
         success: false,
         error: "Invalid or expired token",
@@ -50,6 +61,11 @@ export async function getServerSideProfile() {
     })
 
     if (!user) {
+      // Delete the auth_token cookie
+      cookieStore.delete("auth_token")
+      // Redirect to login page
+      redirect("/login")
+
       return {
         success: false,
         error: "User not found",
@@ -64,6 +80,11 @@ export async function getServerSideProfile() {
     }
   } catch (error) {
     console.error("Server-side profile fetch error:", error)
+    // Delete the auth_token cookie
+    cookies().delete("auth_token")
+    // Redirect to login page
+    redirect("/login")
+
     return {
       success: false,
       error: "Failed to fetch profile",

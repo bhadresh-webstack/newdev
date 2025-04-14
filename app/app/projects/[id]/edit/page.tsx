@@ -6,9 +6,8 @@ import { ArrowLeft, Save } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useProjectsStore } from "@/lib/stores/projects-store"
-import { demoProjects } from "@/lib/data-utils"
 
 import ProjectDetailsForm from "../../new/project-details-form"
 import ProjectRequirementsForm from "../../new/project-requirements-form"
@@ -22,7 +21,7 @@ export default function EditProjectPage() {
   const [activeTab, setActiveTab] = useState("details")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
-  const { updateProject } = useProjectsStore()
+  const { getProjectById, updateProject } = useProjectsStore()
   const projectId = params.id as string
 
   // Initialize form data with default values
@@ -52,39 +51,62 @@ export default function EditProjectPage() {
 
   // Load project data
   useEffect(() => {
-    // In a real app, you would fetch the project data from your API or store
-    // For demo purposes, we'll use the demo data
-    const project = demoProjects.find((p) => p.project_id === projectId)
+    const fetchProject = async () => {
+      try {
+        setLoading(true)
+        const { data, error } = await getProjectById(projectId)
 
-    if (project) {
-      // Transform project data to form data structure
-      setFormData({
-        details: {
-          title: project.project_title || "",
-          category: project.category || "",
-          description: project.description || "",
-          visibility: project.visibility || "public",
-        },
-        requirements: {
-          technicalRequirements: project.technical_requirements || "",
-          skills: project.required_skills ? project.required_skills.split(", ") : [],
-          deliverables: project.deliverables ? project.deliverables.split(", ") : [],
-        },
-        budget: {
-          tier: project.pricing_tier || "standard",
-          amount: project.budget || 2500,
-          paymentType: project.payment_type || "fixed",
-        },
-        timeline: {
-          duration: project.duration_days || 30,
-          startDate: project.start_date ? new Date(project.start_date) : new Date(),
-          priority: project.priority || "medium",
-        },
-      })
+        if (error) {
+          toast({
+            title: "Error loading project",
+            description: error,
+            variant: "destructive",
+          })
+          return
+        }
+
+        if (data) {
+          // Transform project data to form data structure
+          setFormData({
+            details: {
+              title: data.title || "",
+              category: data.category || "",
+              description: data.description || "",
+              visibility: data.visibility || "public",
+            },
+            requirements: {
+              technicalRequirements: data.technical_requirements || "",
+              skills: data.required_skills ? data.required_skills.split(", ") : [],
+              deliverables: data.deliverables ? data.deliverables.split(", ") : [],
+            },
+            budget: {
+              tier: data.pricing_tier || "standard",
+              amount: data.budget || 2500,
+              paymentType: data.payment_type || "fixed",
+            },
+            timeline: {
+              duration: data.duration_days || 30,
+              startDate: data.start_date ? new Date(data.start_date) : new Date(),
+              priority: data.priority || "medium",
+            },
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching project:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load project details",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setLoading(false)
-  }, [projectId])
+    if (projectId) {
+      fetchProject()
+    }
+  }, [projectId, getProjectById, toast])
 
   const updateData = (section, data) => {
     setFormData((prev) => ({
@@ -112,8 +134,7 @@ export default function EditProjectPage() {
     try {
       // Prepare project data for submission
       const projectData = {
-        project_id: projectId,
-        project_title: formData.details.title,
+        title: formData.details.title,
         description: formData.details.description,
         category: formData.details.category,
         technical_requirements: formData.requirements.technicalRequirements,
@@ -125,14 +146,15 @@ export default function EditProjectPage() {
         duration_days: formData.timeline.duration,
         priority: formData.timeline.priority,
         visibility: formData.details.visibility,
+        start_date: formData.timeline.startDate.toISOString(),
       }
 
-      // In a real app, you would update the project in your database
-      // For demo purposes, we'll just show a success message
-      // const { data, error } = await updateProject(projectData)
+      // Call the API to update the project
+      const { data, error } = await updateProject(projectId, projectData)
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (error) {
+        throw new Error(error)
+      }
 
       toast({
         title: "Project updated successfully!",
@@ -145,7 +167,8 @@ export default function EditProjectPage() {
       console.error("Error updating project:", error)
       toast({
         title: "Error updating project",
-        description: "There was an error updating your project. Please try again.",
+        description:
+          error instanceof Error ? error.message : "There was an error updating your project. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -165,6 +188,7 @@ export default function EditProjectPage() {
     )
   }
 
+  console.log("formDataformData",formData)
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-10">
       <div className="flex items-center justify-between">
@@ -240,4 +264,3 @@ export default function EditProjectPage() {
     </div>
   )
 }
-

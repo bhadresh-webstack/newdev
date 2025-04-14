@@ -311,6 +311,10 @@ export const NewTaskForm = memo(function NewTaskForm({
   const groupOptions =
     taskGroups.length > 0 ? taskGroups.map((group) => ({ value: group, label: group })) : defaultGroupOptions
 
+  // Determine if we should disable the project selection
+  // If initialProjectId is provided, it means we're opening from a project page
+  const disableProjectSelection = !!initialProjectId
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
@@ -357,26 +361,34 @@ export const NewTaskForm = memo(function NewTaskForm({
                     <Label htmlFor="project" className={cn(errors.project_id ? "text-destructive" : "")}>
                       Project <span className="text-destructive">*</span>
                     </Label>
-                    <Select value={formData.project_id} onValueChange={(value) => handleChange("project_id", value)}>
-                      <SelectTrigger
-                        id="project"
-                        className={cn(errors.project_id ? "border-destructive" : "")}
-                        disabled={isLoadingProjects}
-                      >
-                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select project"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.length > 0 ? (
-                          projects.map((project) => (
-                            <SelectItem key={project.id} value={project.id}>
-                              {project.title}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="project-1">E-commerce Website</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    {disableProjectSelection ? (
+                      // If we have an initialProjectId, show the selected project as non-editable
+                      <div className="flex items-center h-10 px-3 py-2 text-sm border rounded-md bg-muted">
+                        {projects.find((p) => p.id === initialProjectId)?.title || "Current Project"}
+                      </div>
+                    ) : (
+                      // Otherwise, show the dropdown
+                      <Select value={formData.project_id} onValueChange={(value) => handleChange("project_id", value)}>
+                        <SelectTrigger
+                          id="project"
+                          className={cn(errors.project_id ? "border-destructive" : "")}
+                          disabled={isLoadingProjects}
+                        >
+                          <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select project"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projects.length > 0 ? (
+                            projects.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.title}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="project-1">E-commerce Website</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
                     {errors.project_id && <p className="text-xs text-destructive mt-1">{errors.project_id}</p>}
                   </div>
 

@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { Plus, Search, Filter, ArrowUpDown, Trash2, Calendar } from "lucide-react"
+import { Plus, Search, Filter, ArrowUpDown, Trash2, Calendar, Users, CheckCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,12 @@ const staggerContainer = {
   },
 }
 
+// Extended Project type with relationship flags
+interface EnhancedProject extends Project {
+  isTeamMember?: boolean
+  hasAssignedTasks?: boolean
+}
+
 export default function ProjectsPage() {
   const { fetchProjects, deleteProject, isLoading, error } = useProjectsStore()
   const { user } = useAuthStore()
@@ -51,10 +57,11 @@ export default function ProjectsPage() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
-  const [projects, setProjects] = useState<Project[]>([])
+  const [projects, setProjects] = useState<EnhancedProject[]>([])
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortOrder, setSortOrder] = useState("newest")
+  const [relationshipFilter, setRelationshipFilter] = useState("all") // For team members: all, team, tasks
   const [isDeleting, setIsDeleting] = useState(false)
 
   const userRole = user?.role
@@ -168,6 +175,16 @@ export default function ProjectsPage() {
         }
       }
 
+      // Apply relationship filter for team members
+      if (userRole === "team_member" && relationshipFilter !== "all") {
+        if (relationshipFilter === "team" && !project.isTeamMember) {
+          return false
+        }
+        if (relationshipFilter === "tasks" && !project.hasAssignedTasks) {
+          return false
+        }
+      }
+
       // Apply search filter if needed
       if (searchQuery) {
         return project.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -233,14 +250,16 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-medium tracking-tight">Projects</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your development projects efficiently</p>
         </div>
-        <Button
-          onClick={() => router.push("/app/projects/new")}
-          size="sm"
-          className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-sm"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Project
-        </Button>
+        {(userRole === "admin" || userRole === "customer") && (
+          <Button
+            onClick={() => router.push("/app/projects/new")}
+            size="sm"
+            className="gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-sm"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Project
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -271,6 +290,22 @@ export default function ProjectsPage() {
               <DropdownMenuItem onClick={() => setStatusFilter("Completed")}>Completed</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {userRole === "team_member" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Relationship
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setRelationshipFilter("all")}>All Projects</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRelationshipFilter("team")}>Team Member</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRelationshipFilter("tasks")}>Assigned Tasks</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -363,7 +398,30 @@ export default function ProjectsPage() {
                           {getStatusText(project.progress_percentage || 0)}
                         </Badge>
 
-                        {userRole !== "customer" && (
+                        {userRole === "team_member" && (
+                          <div className="flex items-center gap-1 ml-1">
+                            {project.isTeamMember && (
+                              <Badge
+                                variant="outline"
+                                className="px-1.5 py-0 text-[10px] font-medium border-primary/30 text-primary"
+                              >
+                                <Users className="h-2.5 w-2.5 mr-0.5" />
+                                Team
+                              </Badge>
+                            )}
+                            {project.hasAssignedTasks && (
+                              <Badge
+                                variant="outline"
+                                className="px-1.5 py-0 text-[10px] font-medium border-purple-500/30 text-purple-500"
+                              >
+                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                                Tasks
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {userRole !== "customer" && userRole !== "team_member" && (
                           <>
                             <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary/80 to-purple-600/80 flex items-center justify-center text-white text-[10px] font-bold ml-1">
                               {userRole === "admin" && project.customer_id === user.id
@@ -413,10 +471,12 @@ export default function ProjectsPage() {
               <p className="text-muted-foreground text-center max-w-md mb-6">
                 {searchQuery ? `No projects matching "${searchQuery}"` : "Get started by creating your first project"}
               </p>
-              <Button onClick={() => router.push("/app/projects/new")} className="flex items-center">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Project
-              </Button>
+              {(userRole === "admin" || userRole === "customer") && (
+                <Button onClick={() => router.push("/app/projects/new")} className="flex items-center">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Project
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>

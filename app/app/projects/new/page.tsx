@@ -257,6 +257,7 @@ export default function NewProjectPage() {
       const projectData = {
         title: formData.details.title,
         description: formData.details.description,
+        category:formData.details.category,
         status: "planning",
         pricing_tier: formData.budget.tier,
         // Convert other form data as needed

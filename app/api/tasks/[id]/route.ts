@@ -77,6 +77,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Check if status is changing to "completed"
     const statusChangingToCompleted = body.status === "completed" && existingTask.status !== "completed"
 
+    // In the PATCH function, ensure we're handling due_date properly
+    // If the body contains a due_date string, convert it to a Date object
+    if (body.due_date !== undefined) {
+      body.due_date = body.due_date ? new Date(body.due_date) : null
+    }
+
     // Update the task
     const updatedTask = await prisma.task.update({
       where: { id: taskId },

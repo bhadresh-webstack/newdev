@@ -54,11 +54,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       whereClause.assigned_to = assignedTo
     }
 
+    // Ensure we're including due_date in the response
+    // This is likely where the issue is occurring
     const tasks = await prisma.task.findMany({
-      where: whereClause,
+      where: {
+        project_id: projectId,
+        ...(status && { status }),
+        ...(taskGroup && { task_group: taskGroup }),
+        ...(assignedTo && { assigned_to: assignedTo }),
+      },
       include: {
+        project: {
+          select: {
+            title: true,
+          },
+        },
         assignee: {
           select: {
+            id: true,
             user_name: true,
             profile_image: true,
           },

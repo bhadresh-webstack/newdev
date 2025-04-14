@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { project_id, assigned_to, title, description, status, task_group } = body
+    const { project_id, assigned_to, title, description, status, task_group, priority, due_date } = body
 
     // Validate required fields
     if (!project_id || !title || !description || !status || !task_group) {
@@ -117,6 +117,8 @@ export async function POST(request: NextRequest) {
         description,
         status,
         task_group,
+        priority: priority || "Medium",
+        due_date: due_date ? new Date(due_date) : null,
       },
     })
 

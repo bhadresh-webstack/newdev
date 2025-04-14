@@ -2,6 +2,7 @@ import { io, type Socket } from "socket.io-client"
 import { toast } from "@/hooks/use-toast"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "./api/end-point"
+// import { ENDPOINT } from "@/lib/constants/endpoints"
 
 // Socket instance that will be reused across the application
 let socket: Socket | null = null
@@ -88,6 +89,12 @@ export const disconnectSocket = () => {
   }
 }
 
+// Filter system messages
+const isUserMessage = (message: any): boolean => {
+  // Filter out connection messages and other system messages
+  return !message.type || message.type !== "connection"
+}
+
 // Initialize connection for a project
 export const initializeProjectConnection = (projectId: string, userId: string) => {
   if (projectConnections.has(projectId)) {
@@ -107,6 +114,12 @@ export const initializeProjectConnection = (projectId: string, userId: string) =
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
+
+        // Skip system messages like connection notifications
+        if (!isUserMessage(data)) {
+          console.log("System message received:", data)
+          return
+        }
 
         // Check if this is a message that replaces a temporary one
         const tempId = findTempIdForRealMessage(data)

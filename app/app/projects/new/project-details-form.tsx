@@ -72,6 +72,7 @@ export default function ProjectDetailsForm({ data, updateData }) {
     }))
   }
 
+  console.log("data",data)
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -190,4 +191,3 @@ export default function ProjectDetailsForm({ data, updateData }) {
     </div>
   )
 }
-

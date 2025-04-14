@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (role === "admin") {
       // Admin can access any project
     } else if (role === "team_member") {
-      // Team member can access if they have assigned tasks
+      // Team member can access if they have assigned tasks OR if they are assigned to the project
       const hasAssignedTask = await prisma.task.findFirst({
         where: {
           project_id: projectId,
@@ -39,7 +39,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
       })
 
-      if (!hasAssignedTask) {
+      // Check if the team member is directly assigned to the project
+      const isAssignedToProject = await prisma.projectTeamMember.findFirst({
+        where: {
+          project_id: projectId,
+          user_id: userId,
+        },
+      })
+
+      if (!hasAssignedTask && !isAssignedToProject) {
         return NextResponse.json({ error: "Unauthorized to access this project" }, { status: 403 })
       }
     } else if (role === "customer") {
@@ -136,7 +144,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (role === "admin") {
       // Admin can access any project
     } else if (role === "team_member") {
-      // Team member can access if they have assigned tasks
+      // Team member can access if they have assigned tasks OR if they are assigned to the project
       const hasAssignedTask = await prisma.task.findFirst({
         where: {
           project_id: projectId,
@@ -144,7 +152,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       })
 
-      if (!hasAssignedTask) {
+      // Check if the team member is directly assigned to the project
+      const isAssignedToProject = await prisma.projectTeamMember.findFirst({
+        where: {
+          project_id: projectId,
+          user_id: userId,
+        },
+      })
+
+      if (!hasAssignedTask && !isAssignedToProject) {
         return NextResponse.json({ error: "Unauthorized to access this project" }, { status: 403 })
       }
     } else if (role === "customer") {

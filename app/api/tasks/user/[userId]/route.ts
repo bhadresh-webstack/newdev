@@ -31,6 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const projectId = searchParams.get("projectId")
+    const taskGroup = searchParams.get("taskGroup")
 
     // Check if user exists
     const userExists = await prisma.user.findUnique({
@@ -49,17 +50,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (status) whereClause.status = status
     if (projectId) whereClause.project_id = projectId
 
+    // Ensure we're including due_date in the response
     const tasks = await prisma.task.findMany({
-      where: whereClause,
+      where: {
+        assigned_to: requestedUserId,
+        ...(projectId && { project_id: projectId }),
+        ...(status && { status }),
+        ...(taskGroup && { task_group: taskGroup }),
+      },
       include: {
         project: {
           select: {
             title: true,
-            customer: {
-              select: {
-                user_name: true,
-              },
-            },
+          },
+        },
+        assignee: {
+          select: {
+            user_name: true,
+            profile_image: true,
           },
         },
       },

@@ -306,3 +306,35 @@ export interface AuthState {
   isLoading: boolean
   error: string | null
 }
+
+// Auth related types
+export interface AuthError {
+  message: string
+  code?: string
+}
+
+// Plan related types
+export interface PlanType {
+  id: string
+  title: string
+  price: string
+  description: string
+  features: string[]
+  popular: boolean
+  gradient: string
+}
+
+// Form related types
+export interface FormErrors {
+  email?: string | null
+  password?: string | null
+  confirmPassword?: string | null
+  userName?: string | null
+}
+
+// User related types
+export interface User {
+  id: string
+  email: string
+  userName?: string
+}

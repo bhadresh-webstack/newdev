@@ -1,28 +1,24 @@
 "use client"
 
 import type React from "react"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { ArrowLeft, Layers, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Eye, EyeOff } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { useAuthStore } from "@/lib/stores/auth-store"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuthStore } from "@/lib/stores/auth-store"
+import { CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6 },
-  },
-}
+import AuthLayout from "@/components/auth/auth-layout"
+import AuthCard from "@/components/auth/auth-card"
+import FormError from "@/components/auth/form-error"
+import SubmitButton from "@/components/auth/submit-button"
+import AuthFooter from "@/components/auth/auth-footer"
+import SuccessMessage from "@/components/auth/success-message"
 
 export default function ResetPasswordPage() {
   const { verifyToken, resetPassword, isLoading, error, clearError } = useAuthStore()
@@ -138,184 +134,93 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row font-poppins">
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-        className="w-full md:w-1/2 bg-gradient-to-br from-primary/20 via-purple-500/10 to-background p-8 flex flex-col justify-center relative overflow-hidden"
+    <AuthLayout
+      title="Reset your password"
+      description="Create a new password for your account to securely access your projects."
+      testimonial={{
+        quote:
+          "Security is our top priority. We ensure your account is protected with strong password policies and regular security updates.",
+        author: "Webstack Security Team",
+        company: "",
+      }}
+    >
+      <AuthCard
+        title="Reset Password"
+        description={isTokenValid ? `Create a new password for ${email}` : "Verify your reset token"}
       >
-        <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10"></div>
-        <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center mb-8 hover:text-primary transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Link>
-          <div className="flex items-center gap-2 mb-6">
-            <Layers className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-medium bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
-              Webstack
-            </span>
-          </div>
-          <h1 className="text-3xl font-medium mb-4">Reset your password</h1>
-          <p className="text-muted-foreground mb-6 max-w-md font-light">
-            Create a new password for your account to securely access your projects.
-          </p>
-          <div className="hidden md:block">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 max-w-md"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+        {!isTokenValid ? (
+          <CardContent className="space-y-4 text-center">
+            <FormError error={tokenError} />
+            <Button
+              className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
+              onClick={() => router.push("/forgot-password")}
             >
-              <motion.blockquote
-                className="text-lg font-normal"
-                animate={{
-                  opacity: [0.9, 1, 0.9],
-                  transition: {
-                    repeat: Number.POSITIVE_INFINITY,
-                    duration: 3,
-                    ease: "easeInOut",
-                  },
-                }}
-              >
-                "Security is our top priority. We ensure your account is protected with strong password policies and
-                regular security updates."
-              </motion.blockquote>
-              <div className="mt-4 font-normal">— Webstack Security Team</div>
-            </motion.div>
-          </div>
-        </div>
-      </motion.div>
+              Request New Reset Link
+            </Button>
+            <div className="text-center text-sm font-light mt-4">
+              <AuthFooter text="Remember your password?" linkText="Back to Login" linkHref="/login" />
+            </div>
+          </CardContent>
+        ) : isSuccess ? (
+          <CardContent className="space-y-4">
+            <SuccessMessage
+              title="Password Reset Successful!"
+              message="Your password has been reset successfully. You can now log in with your new password."
+              buttonText="Go to Login"
+              onButtonClick={() => router.push("/login")}
+            />
+          </CardContent>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate>
+            <CardContent className="space-y-4">
+              <FormError error={formError} />
 
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-        className="w-full md:w-1/2 p-8 flex items-center justify-center"
-      >
-        <Card className="w-full max-w-md border-0 shadow-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-medium">Reset Password</CardTitle>
-            <CardDescription className="font-light">
-              {isTokenValid ? `Create a new password for ${email}` : "Verify your reset token"}
-            </CardDescription>
-          </CardHeader>
-
-          {!isTokenValid ? (
-            <CardContent className="space-y-4 text-center">
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{tokenError}</AlertDescription>
-              </Alert>
-              <Button
-                className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
-                onClick={() => router.push("/forgot-password")}
-              >
-                Request New Reset Link
-              </Button>
-              <div className="text-center text-sm font-light mt-4">
-                Remember your password?{" "}
-                <Link href="/login" className="text-primary hover:underline font-normal">
-                  Back to Login
-                </Link>
-              </div>
-            </CardContent>
-          ) : isSuccess ? (
-            <CardContent className="space-y-4 text-center">
-              <div className="flex justify-center">
-                <div className="rounded-full bg-green-100 p-3">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-              <p className="text-lg font-medium">Password Reset Successful!</p>
-              <p className="text-muted-foreground font-light">
-                Your password has been reset successfully. You can now log in with your new password.
-              </p>
-              <Button
-                className="mt-4 w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
-                onClick={() => router.push("/login")}
-              >
-                Go to Login
-              </Button>
-            </CardContent>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate>
-              <CardContent className="space-y-4">
-                {formError && (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">New Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      className="transition-all border-muted-foreground/20 focus:border-primary pr-10"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value)
-                        if (formError) setFormError(null)
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <div className="relative">
                   <Input
-                    id="confirmPassword"
+                    id="password"
                     type={showPassword ? "text" : "password"}
-                    className="transition-all border-muted-foreground/20 focus:border-primary"
-                    value={confirmPassword}
+                    className="transition-all border-muted-foreground/20 focus:border-primary pr-10"
+                    value={password}
                     onChange={(e) => {
-                      setConfirmPassword(e.target.value)
+                      setPassword(e.target.value)
                       if (formError) setFormError(null)
                     }}
                   />
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col space-y-4">
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full">
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity font-normal"
-                    disabled={isLoading}
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Resetting password...
-                      </>
-                    ) : (
-                      "Reset Password"
-                    )}
-                  </Button>
-                </motion.div>
-                <div className="text-center text-sm font-light">
-                  Remember your password?{" "}
-                  <Link href="/login" className="text-primary hover:underline font-normal">
-                    Back to Login
-                  </Link>
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-              </CardFooter>
-            </form>
-          )}
-        </Card>
-      </motion.div>
-    </div>
+                <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  className="transition-all border-muted-foreground/20 focus:border-primary"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value)
+                    if (formError) setFormError(null)
+                  }}
+                />
+              </div>
+            </CardContent>
+
+            <div className="px-6 pb-6 pt-2 space-y-4">
+              <SubmitButton isLoading={isLoading} loadingText="Resetting password..." text="Reset Password" />
+              <AuthFooter text="Remember your password?" linkText="Back to Login" linkHref="/login" />
+            </div>
+          </form>
+        )}
+      </AuthCard>
+    </AuthLayout>
   )
 }

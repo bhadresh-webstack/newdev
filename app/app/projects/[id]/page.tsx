@@ -220,32 +220,18 @@ export default function ProjectDetailPage() {
   }
 
   // Function to fetch tasks for this project
-  const getProjectTasks = async () => {
+  const getProjectTasks = () => {
     setIsLoadingTasks(true)
     try {
-      // Use the byProject endpoint directly to get tasks for this specific project
-      const url = ENDPOINT.TASK.byProject(projectId)
-      const { data, error } = await apiRequest<TaskType[]>("GET", url)
-
-      if (error) {
-        console.error("Error fetching project tasks:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load project tasks",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Set the tasks directly from the response
-      if (data) {
-        console.log("Project tasks loaded:", data)
-        setProjectTasks(data)
+      // Use the tasks data that's already included in the project object
+      if (project && project.tasks) {
+        console.log("Using tasks from project data:", project.tasks)
+        setProjectTasks(project.tasks)
       } else {
         setProjectTasks([])
       }
     } catch (error) {
-      console.error("Error fetching project tasks:", error)
+      console.error("Error setting project tasks:", error)
       toast({
         title: "Error",
         description: "Failed to load project tasks",
@@ -507,7 +493,6 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (projectId) {
       getProject()
-      getProjectTasks()
 
       if (userRole === "admin" || userRole === "team") {
         getTeamMembers()
@@ -518,6 +503,13 @@ export default function ProjectDetailPage() {
       getProjectFiles()
     }
   }, [projectId, userRole])
+
+  // Add a new useEffect to update tasks when project changes
+  useEffect(() => {
+    if (project) {
+      getProjectTasks()
+    }
+  }, [project])
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -549,36 +541,91 @@ export default function ProjectDetailPage() {
     setIsTaskDetailOpen(true)
   }
 
+  // Find the handleTaskStatusChange function and replace it with this improved version
+  // that properly handles errors and ensures the UI remains responsive
+
   // Add this function to handle task status changes
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-    // Optimistically update the UI first
-    if (selectedTask && selectedTask.id === taskId) {
-      setSelectedTask({
-        ...selectedTask,
-        status: newStatus,
+    try {
+      // Optimistically update the UI first
+      const taskToUpdate = projectTasks.find((t) => t.id === taskId)
+      if (taskToUpdate) {
+        // Update the selected task if it's open in the detail view
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus,
+          })
+        }
+
+        // Update the task in the projectTasks array
+        setProjectTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)),
+        )
+      }
+
+      // Then make the API call
+      await handleUpdateTask(taskId, { status: newStatus })
+
+      // After updating the task, refresh the project data to get updated stats
+      await getProject()
+
+      // No need to call getProjectTasks() again since it will be triggered by the useEffect when project changes
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Task status updated to ${newStatus}`,
       })
+    } catch (error) {
+      console.error("Error updating task status:", error)
+
+      // Show error message
+      toast({
+        title: "Error",
+        description: "Failed to update task status. Please try again.",
+        variant: "destructive",
+      })
+
+      // Revert optimistic update if there was an error
+      if (selectedTask && selectedTask.id === taskId) {
+        const originalTask = projectTasks.find((t) => t.id === taskId)
+        if (originalTask) {
+          setSelectedTask(originalTask)
+        }
+      }
     }
-
-    // Update the task in the projectTasks array
-    setProjectTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)),
-    )
-
-    // Then make the API call
-    await handleUpdateTask(taskId, { status: newStatus })
-
-    // Refresh the task list to ensure we have the latest data
-    getProjectTasks()
   }
 
+  // Also update the handleTaskUpdate function to properly handle errors
   // Add a function to handle task updates from the detail sheet
   const handleTaskUpdate = async (updatedTask: TaskType) => {
-    // Update the task in the projectTasks array
-    setProjectTasks((prevTasks) => prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+    try {
+      // Update the task in the projectTasks array
+      setProjectTasks((prevTasks) => prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
 
-    // Update the selected task if it's currently open
-    if (selectedTask && selectedTask.id === updatedTask.id) {
-      setSelectedTask(updatedTask)
+      // Update the selected task if it's currently open
+      if (selectedTask && selectedTask.id === updatedTask.id) {
+        setSelectedTask(updatedTask)
+      }
+
+      // Refresh the project data to get updated stats
+      await getProject()
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: "Task updated successfully",
+      })
+    } catch (error) {
+      console.error("Error updating task:", error)
+
+      // Show error message
+      toast({
+        title: "Error",
+        description: "Failed to update task. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -963,7 +1010,7 @@ export default function ProjectDetailPage() {
         </motion.div>
       </motion.div>
 
-      <Tabs defaultValue={userRole === "customer" || userRole === "team" ? "messages" : "tasks"} className="w-full">
+      <Tabs defaultValue={userRole === "customer" ? "messages" : "tasks"} className="w-full">
         <TabsList
           className={`grid ${userRole === "customer" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} w-full max-w-md h-9`}
         >
@@ -1548,7 +1595,6 @@ export default function ProjectDetailPage() {
         onSubmit={onCreateNewTask}
         initialProjectId={projectId}
       />
-
       {/* Add the TaskDetailSheet component at the end of the return statement, just before the closing </div> */}
       {selectedTask && (
         <TaskDetailSheet

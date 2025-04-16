@@ -41,6 +41,7 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { apiRequest } from "@/lib/useApi"
+// import { ENDPOINT } from "@/lib/constants/endpoints"
 import { Calendar as CalendarUI } from "@/components/ui/calendar"
 import { ENDPOINT } from "@/lib/api/end-point"
 
@@ -116,6 +117,27 @@ export function TaskDetailSheet({
   const [teamMembers, setTeamMembers] = useState<TeamMember[] | undefined>()
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false)
 
+  // Add effect to fix pointer-events issue when sheet is closed
+  useEffect(() => {
+    // When sheet is opened
+    if (isOpen) {
+      // No need to do anything here, the Sheet component handles this
+    } else {
+      // When sheet is closed, ensure pointer-events are restored
+      document.body.style.pointerEvents = ""
+
+      // Also ensure any other modal-related styles are cleaned up
+      document.body.classList.remove("overflow-hidden")
+    }
+
+    // Cleanup function that runs when component unmounts or isOpen changes
+    return () => {
+      // Ensure pointer-events are restored when component unmounts
+      document.body.style.pointerEvents = ""
+      document.body.classList.remove("overflow-hidden")
+    }
+  }, [isOpen])
+
   const fetchTeamMembers = async () => {
     if (teamMembers?.length > 0) return // Don't fetch if we already have team members
 
@@ -156,7 +178,6 @@ export function TaskDetailSheet({
       .toUpperCase()
   }
 
-  console.log("localTask", localTask)
   // Format date to readable format
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "Not set"
@@ -187,14 +208,39 @@ export function TaskDetailSheet({
   // Handle status change with optimistic UI update
   const handleStatusChange = async (newStatus: string) => {
     if (localTask) {
-      // Update local state immediately for optimistic UI update
-      setLocalTask({
-        ...localTask,
-        status: newStatus,
-      })
+      try {
+        // Update local state immediately for optimistic UI update
+        setLocalTask({
+          ...localTask,
+          status: newStatus,
+        })
 
-      // Call the parent handler to update the backend
-      await onStatusChange(localTask.id, newStatus)
+        // Call the parent handler to update the backend
+        await onStatusChange(localTask.id, newStatus)
+
+        // Show success toast
+        toast({
+          title: "Status Updated",
+          description: `Task status changed to ${newStatus}`,
+        })
+      } catch (error) {
+        console.error("Error updating task status:", error)
+
+        // Revert to original status if there's an error
+        if (localTask) {
+          setLocalTask({
+            ...localTask,
+            status: localTask.status,
+          })
+        }
+
+        // Show error toast
+        toast({
+          title: "Error",
+          description: "Failed to update task status",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -220,6 +266,8 @@ export function TaskDetailSheet({
     if (localTask) {
       const success = await handleDeleteTask(localTask.id)
       if (success) {
+        // Ensure pointer-events are restored before closing
+        document.body.style.pointerEvents = ""
         onClose()
       }
     }
@@ -280,18 +328,26 @@ export function TaskDetailSheet({
         variant: "destructive",
       })
 
-      // Revert optimistic update
+      // Don't exit edit mode on error so user can try again
+      // But revert optimistic update
       if (localTask) {
-        setLocalTask(localTask)
+        setEditedTask(localTask)
       }
     }
   }
 
-  console.log("seteditedTask", editedTask)
   // Add this function to handle canceling edits
   const handleCancelEdit = () => {
     setIsEditMode(false)
     setEditedTask(null)
+  }
+
+  // Custom close handler to ensure pointer-events are restored
+  const handleSheetClose = () => {
+    // Ensure pointer-events are restored
+    document.body.style.pointerEvents = ""
+    // Call the original onClose
+    onClose()
   }
 
   if (!localTask) return null
@@ -319,7 +375,7 @@ export function TaskDetailSheet({
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && handleSheetClose()}>
       <SheetContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto p-0">
         <div className="flex flex-col h-full">
           {/* Header with gradient background */}

@@ -6,6 +6,7 @@ import { apiRequest } from "../useApi"
 import { getServerSideProfile } from "@/lib/server/auth-actions"
 import { ENDPOINT } from "../api/end-point"
 
+
 type AuthState = {
   user: any | null
   isAuthenticated: boolean
@@ -104,7 +105,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       return { data, error: null }
     } catch (error: any) {
       console.error("Sign in error:", error)
-      const errorMessage = error.message || "Failed to sign in"
+      // Provide more specific error message
+      const errorMessage = error.message || "Failed to sign in. Please check your network connection and try again."
       set({ isLoading: false, error: errorMessage })
       return { data: null, error: errorMessage }
     }
@@ -230,7 +232,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   // ✅ Logout
   signOut: async () => {
     set({ isLoading: true })
-
+    if (typeof window !== "undefined") {
+      window.location.href = "/login"
+    }
     try {
       const { error } = await apiRequest("POST", ENDPOINT.AUTH.signOut)
 
@@ -238,7 +242,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({
         user: null,
         isAuthenticated: false,
-        isLoading: false,
       })
 
       // Redirect to login page
@@ -252,13 +255,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({
         user: null,
         isAuthenticated: false,
-        isLoading: false,
       })
-
-      // Redirect to login page
       if (typeof window !== "undefined") {
         window.location.href = "/login"
       }
+      // Redirect to login page
+    }finally{
+     set({
+      isLoading: false,
+     })
     }
   },
 

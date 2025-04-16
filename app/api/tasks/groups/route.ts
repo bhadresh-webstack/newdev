@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
 
 // GET all unique task groups
 export async function GET(request: NextRequest) {

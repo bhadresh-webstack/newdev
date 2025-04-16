@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // POST assign a team member to a project
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

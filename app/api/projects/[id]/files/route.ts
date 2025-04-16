@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // GET all files for a specific project
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -96,6 +95,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json()
     const { userId, role } = auth
 
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 })
+
+    }
     // Check if project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },

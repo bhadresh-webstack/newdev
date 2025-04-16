@@ -14,6 +14,10 @@ export async function GET(request: NextRequest) {
 
     const { userId, role } = auth
 
+    if(!userId){
+      return NextResponse.json({ error: "User ID not found" }, { status: 401 })
+    }
+
     // Base response structure
     const response: any = {
       stats: {},
@@ -27,12 +31,9 @@ export async function GET(request: NextRequest) {
     } else if (role === "team_member") {
       // Team member dashboard data
       await fetchTeamMemberDashboardData(userId, response)
-    } else if (role === "customer") {
+    } else {
       // Customer dashboard data
       await fetchCustomerDashboardData(userId, response)
-    } else {
-      // Default user dashboard data
-      await fetchDefaultDashboardData(userId, response)
     }
 
     return NextResponse.json(response, { status: 200 })

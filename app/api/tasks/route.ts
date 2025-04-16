@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // GET all tasks with optional filtering
 export async function GET(request: NextRequest) {

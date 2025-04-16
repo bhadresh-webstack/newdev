@@ -66,7 +66,7 @@ const initializeSocketServer = (req: NextApiRequest, res: any) => {
           // const savedMessage = await saveMessageToDatabase(messageData)
 
           // Broadcast message to all clients in the project room
-          io.to(`project:${project_id}`).emit("new_message", messageData)
+          io?.to(`project:${project_id}`).emit("new_message", messageData)
 
           console.log(`Message sent to project ${project_id} by user ${sender_id}`)
         } catch (error) {

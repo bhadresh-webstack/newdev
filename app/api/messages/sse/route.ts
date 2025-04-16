@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         systemMessage: true,
         message: "Connected to message stream",
       })
-      controller.enqueue(`data: ${data}\n\n`)
+      controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`))
     },
     cancel() {
       // Remove client when connection is closed
@@ -83,6 +83,6 @@ export function broadcastToProject(projectId: string, message: any) {
   const data = JSON.stringify(message)
 
   for (const client of projectClients) {
-    client.controller.enqueue(`data: ${data}\n\n`)
+    client.controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`))
   }
 }

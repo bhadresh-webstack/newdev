@@ -4,7 +4,7 @@ import { cookies } from "next/headers"
 export async function POST() {
   try {
     // Clear the auth cookie - await the cookies() function
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     await cookieStore.set({
       name: "auth_token",
       value: "",

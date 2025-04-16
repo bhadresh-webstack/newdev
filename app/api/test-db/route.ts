@@ -9,6 +9,6 @@ export async function GET() {
     return NextResponse.json({ success: true, timestamp: result[0] });
   } catch (error) {
     console.error("Database connection failed:", error);
-    return NextResponse.json({ success: false, message: error?.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error)?.message }, { status: 500 });
   }
 }

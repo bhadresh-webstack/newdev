@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // GET team members assigned to a project
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,7 +73,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       role: member.user.team_role,
       department: member.user.department,
       profile_image: member.user.profile_image,
-      assigned_at: member.assigned_at,
+      assigned_at: member.joined_at,
     }))
 
     return NextResponse.json({

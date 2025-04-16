@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key"
 
 // GET all projects with role-based filtering

@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // GET project statistics
 export async function GET(request: NextRequest) {
@@ -97,11 +96,11 @@ export async function GET(request: NextRequest) {
     // Format the response
     const stats = {
       totalProjects,
-      projectsByStatus: projectsByStatus.reduce((acc, curr) => {
+      projectsByStatus: projectsByStatus.reduce((acc: Record<string, number>, curr) => {
         acc[curr.status] = curr._count.id
         return acc
-      }, {}),
-      projectsByPriority: projectsByPriority.reduce((acc, curr) => {
+      }, {} as Record<string, number>),
+      projectsByPriority: projectsByPriority.reduce((acc: Record<string, number>, curr) => {
         if (curr.priority) {
           acc[curr.priority] = curr._count.id
         }

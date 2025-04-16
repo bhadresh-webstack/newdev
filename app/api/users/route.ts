@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import prisma from "@/lib/prisma/client";
+import prisma from "@/lib/prisma";
 
 
 // ✅ **GET: Fetch All Users**

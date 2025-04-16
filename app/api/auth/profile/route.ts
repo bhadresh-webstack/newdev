@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { verifyToken } from "@/lib/auth-utils"
 import { cookies } from "next/headers"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
     // Get token from cookies
-    const token = cookies().get("auth_token")?.value
+    const token = (await cookies()).get("auth_token")?.value
 
     if (!token) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })

@@ -1,9 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { authenticateRequest } from "@/lib/auth-utils"
 import { broadcastToProject } from "@/app/api/messages/sse/route"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 // GET all messages for a specific project
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +17,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id: projectId } = await params
     const { userId, role } = auth
 
+    if (!userId) {
+      return NextResponse.json({ error: "User ID not found" }, { status: 401 })
+    }
     // Check if project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -131,6 +133,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json()
     const { userId, role } = auth
 
+    if (!userId) {
+      return NextResponse.json({ error: "User ID not found" }, { status: 401 })
+
+    }
     // Check if project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -205,7 +211,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           },
         },
       },
-    })
+    }) as {
+      id: string;
+      created_at: Date;
+      project_id: string;
+      message: string;
+      sender_id: string;
+      receiver_id: string;
+      sender: {
+        id: string;
+        user_name: string;
+        profile_image: string;
+        role: string;
+      };
+      receiver: {
+        id: string;
+        user_name: string;
+        profile_image: string;
+        role: string;
+      };
+    }
 
     // Broadcast the message to all clients in the project
     broadcastToProject(projectId, newMessage)

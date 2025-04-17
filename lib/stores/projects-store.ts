@@ -13,7 +13,7 @@ export type Project = {
   customer_name?: string
   pricing_tier: string
   created_at: string
-  updated_at: string
+  updated_at?: string
   progress_percentage?: number
   total_tasks?: number
   completed_tasks?: number

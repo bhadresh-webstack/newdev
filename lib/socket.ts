@@ -2,7 +2,7 @@ import { io, type Socket } from "socket.io-client"
 import { toast } from "@/hooks/use-toast"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "./api/end-point"
-// import { ENDPOINT } from "@/lib/constants/endpoints"
+import { Message } from "./types"
 
 // Socket instance that will be reused across the application
 let socket: Socket | null = null
@@ -163,7 +163,7 @@ export const initializeProjectConnection = (projectId: string, userId: string) =
 }
 
 // Find temporary ID for a real message based on content matching
-function findTempIdForRealMessage(realMessage) {
+function findTempIdForRealMessage(realMessage : Message) {
   for (const [tempId, messageData] of tempMessageIds.entries()) {
     try {
       const data = JSON.parse(messageData)

@@ -101,13 +101,13 @@ const roleSpecificNavItems = {
       color: 'from-indigo-500 to-indigo-600',
       shadowColor: 'shadow-indigo-500/20'
     },
-    {
-      name: 'Settings',
-      href: '/app/settings',
-      icon: Settings,
-      color: 'from-gray-500 to-gray-600',
-      shadowColor: 'shadow-gray-500/20'
-    }
+    // {
+    //   name: 'Settings',
+    //   href: '/app/settings',
+    //   icon: Settings,
+    //   color: 'from-gray-500 to-gray-600',
+    //   shadowColor: 'shadow-gray-500/20'
+    // }
   ]
 }
 
@@ -345,7 +345,7 @@ export function Sidebar3D ({
         </div>
 
         {/* Help section */}
-        <div
+        {/* <div
           className={cn(
             'px-2 py-2',
             collapsed && !isMobile ? 'hidden' : 'block'
@@ -378,7 +378,7 @@ export function Sidebar3D ({
               <span className='ml-3'>Help & Support</span>
             </motion.div>
           </Link>
-        </div>
+        </div> */}
 
         {/* User profile */}
         <div className='border-t p-4'>

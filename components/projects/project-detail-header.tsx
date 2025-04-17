@@ -40,7 +40,7 @@ export function ProjectDetailHeader({
           variant="ghost"
           size="sm"
           className="rounded-full bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700"
-          onClick={() => router.push("/projects")}
+          onClick={() => router.push("/app/projects")}
         >
           <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </Button>
@@ -55,7 +55,7 @@ export function ProjectDetailHeader({
           variant="outline"
           size="sm"
           className="gap-1 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary shadow-sm"
-          onClick={() => router.push(`/projects/${projectId}/edit`)}
+          onClick={() => router.push(`/app/projects/${projectId}/edit`)}
         >
           <Edit className="h-3.5 w-3.5" />
           Edit

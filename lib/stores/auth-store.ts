@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { apiRequest } from "../useApi"
-// import { ENDPOINT } from "../constants/endpoints"
 
 // Import the server action
 import { getServerSideProfile } from "@/lib/server/auth-actions"

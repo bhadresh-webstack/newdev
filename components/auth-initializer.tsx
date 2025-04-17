@@ -1,8 +1,15 @@
 "use client"
 
-// This is an empty component that doesn't connect to any store
+import { useEffect } from "react"
+import { useAuthStore } from "@/lib/stores/auth-store"
+
 export function AuthInitializer() {
-  // No store connections
+  const { initialize } = useAuthStore()
+
+  useEffect(() => {
+    initialize()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return null
 }
-

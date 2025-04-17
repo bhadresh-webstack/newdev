@@ -3,7 +3,7 @@
 import { create } from "zustand"
 import { apiRequest } from "@/lib/useApi" // Updated import path
 import { debounce } from "@/lib/utils" // Add debounce utility
-import { ENDPOINT } from "../api/end-point"
+import { ENDPOINT } from "@/lib/api/end-point"
 
 export type Task = {
   id: string
@@ -31,6 +31,8 @@ export type Task = {
   due_date?: string | null
 }
 
+export type CreateTaskData = Omit<Task, "id" | "created_at" | "updated_at">
+
 type TasksState = {
   tasks: Task[]
   isLoading: boolean
@@ -51,9 +53,7 @@ type TasksState = {
   fetchTaskGroups: (projectId?: string) => Promise<void>
   fetchStatusSummary: (projectId?: string, userId?: string) => Promise<void>
   getTask: (id: string) => Promise<Task | null>
-  createTask: (
-    task: Omit<Task, "id" | "created_at" | "updated_at">,
-  ) => Promise<{ data: Task | null; error: string | null }>
+  createTask: (task: CreateTaskData) => Promise<{ data: Task | null; error: string | null }>
   updateTask: (id: string, updates: Partial<Task>) => Promise<{ data: Task | null; error: string | null }>
   updateTaskGroup: (id: string, newGroup: string) => Promise<{ error: string | null }>
   deleteTask: (id: string) => Promise<{ error: string | null }>

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { motion } from "framer-motion"
 import {
   Briefcase,
@@ -22,20 +24,65 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 
-const tierIcons = {
+// Define interfaces for the form data structure
+interface DetailsData {
+  title: string
+  category: string
+  description: string
+  visibility: string
+}
+
+interface RequirementsData {
+  technicalRequirements: string
+  skills: string[]
+  deliverables: string[]
+}
+
+interface BudgetData {
+  tier: string
+  amount: number
+  paymentType: string
+}
+
+interface TimelineData {
+  duration: number
+  startDate: Date
+  priority: string
+}
+
+interface ProjectFormData {
+  details: DetailsData
+  requirements: RequirementsData
+  budget: BudgetData
+  timeline: TimelineData
+}
+
+interface ProjectReviewFormProps {
+  data: ProjectFormData
+  onSubmit: () => void
+  isSubmitting: boolean
+}
+
+// Define icon mappings with proper types
+interface IconInfo {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  gradient: string
+}
+
+const tierIcons: Record<string, IconInfo> = {
   basic: { icon: Zap, gradient: "from-blue-500 to-cyan-400" },
   standard: { icon: Shield, gradient: "from-primary to-purple-600" },
   premium: { icon: Star, gradient: "from-amber-500 to-orange-500" },
 }
 
-const priorityIcons = {
+const priorityIcons: Record<string, IconInfo> = {
   low: { icon: Hourglass, gradient: "from-blue-500 to-cyan-400" },
   medium: { icon: Clock, gradient: "from-primary to-purple-600" },
   high: { icon: Flame, gradient: "from-amber-500 to-orange-500" },
 }
 
-export default function ProjectReviewForm({ data, onSubmit, isSubmitting }) {
-  const formatCurrency = (value) => {
+export default function ProjectReviewForm({ data, onSubmit, isSubmitting }: ProjectReviewFormProps) {
+  const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -43,13 +90,13 @@ export default function ProjectReviewForm({ data, onSubmit, isSubmitting }) {
     }).format(value)
   }
 
-  const tierInfo = tierIcons[data.budget.tier]
-  const TierIcon = tierInfo?.icon || Shield
-  const tierGradient = tierInfo?.gradient || "from-primary to-purple-600"
+  const tierInfo = tierIcons[data.budget.tier] || { icon: Shield, gradient: "from-primary to-purple-600" }
+  const TierIcon = tierInfo.icon
+  const tierGradient = tierInfo.gradient
 
-  const priorityInfo = priorityIcons[data.timeline.priority]
-  const PriorityIcon = priorityInfo?.icon || Clock
-  const priorityGradient = priorityInfo?.gradient || "from-primary to-purple-600"
+  const priorityInfo = priorityIcons[data.timeline.priority] || { icon: Clock, gradient: "from-primary to-purple-600" }
+  const PriorityIcon = priorityInfo.icon
+  const priorityGradient = priorityInfo.gradient
 
   return (
     <div className="space-y-8">
@@ -240,4 +287,3 @@ export default function ProjectReviewForm({ data, onSubmit, isSubmitting }) {
     </div>
   )
 }
-

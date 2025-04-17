@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { X, Plus, Code, Sparkles, Zap } from "lucide-react"
@@ -9,6 +11,23 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+
+// Add these interfaces at the top of the file, right after the imports
+interface RequirementsData {
+  technicalRequirements: string
+  skills: string[]
+  deliverables: string[]
+  errors?: {
+    technicalRequirements?: string
+    skills?: string
+    deliverables?: string
+  }
+}
+
+interface ProjectRequirementsFormProps {
+  data: RequirementsData
+  updateData: (data: Partial<RequirementsData>) => void
+}
 
 // Popular skills for suggestions
 const popularSkills = [
@@ -27,28 +46,37 @@ const popularSkills = [
   "Performance Optimization",
 ]
 
-export default function ProjectRequirementsForm({ data, updateData }) {
+// Update the function signature with proper types
+export default function ProjectRequirementsForm({ data, updateData }: ProjectRequirementsFormProps) {
   const [newSkill, setNewSkill] = useState("")
   const [newDeliverable, setNewDeliverable] = useState("")
   const [showSkillSuggestions, setShowSkillSuggestions] = useState(false)
-  const [errors, setErrors] = useState({
-    technicalRequirements: "",
-    skills: "",
-    deliverables: "",
+  const [errors, setErrors] = useState<{
+    technicalRequirements: string | null
+    skills: string | null
+    deliverables: string | null
+  }>({
+    technicalRequirements: null,
+    skills: null,
+    deliverables: null,
   })
 
-  const dropdownRef = useRef(null)
+  const dropdownRef = useRef<HTMLDivElement | null>(null)
 
   // Update local errors when they come from parent component
   useEffect(() => {
     if (data.errors) {
-      setErrors(data.errors)
+      setErrors({
+        technicalRequirements: data.errors.technicalRequirements || null,
+        skills: data.errors.skills || null,
+        deliverables: data.errors.deliverables || null,
+      })
     }
   }, [data.errors])
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowSkillSuggestions(false)
       }
     }
@@ -64,24 +92,24 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     }
   }, [showSkillSuggestions])
 
-  const validateField = (field, value) => {
+  const validateField = (field: keyof RequirementsData, value: string | string[]): string => {
     switch (field) {
       case "technicalRequirements":
-        return !value.trim()
+        return !value || typeof value !== "string" || !value.trim()
           ? "Technical requirements are required"
           : value.trim().length < 30
             ? "Please provide more detailed technical requirements (at least 30 characters)"
             : ""
       case "skills":
-        return value.length === 0 ? "Please add at least one required skill" : ""
+        return Array.isArray(value) && value.length === 0 ? "Please add at least one required skill" : ""
       case "deliverables":
-        return value.length === 0 ? "Please add at least one deliverable" : ""
+        return Array.isArray(value) && value.length === 0 ? "Please add at least one deliverable" : ""
       default:
         return ""
     }
   }
 
-  const handleAddSkill = (skill) => {
+  const handleAddSkill = (skill: string) => {
     if (skill && !data.skills.includes(skill)) {
       const newSkills = [...data.skills, skill]
       updateData({ skills: newSkills })
@@ -98,7 +126,7 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     setShowSkillSuggestions(false)
   }
 
-  const handleRemoveSkill = (skillToRemove) => {
+  const handleRemoveSkill = (skillToRemove: string) => {
     const newSkills = data.skills.filter((skill) => skill !== skillToRemove)
     updateData({ skills: newSkills })
 
@@ -127,7 +155,7 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     setNewDeliverable("")
   }
 
-  const handleRemoveDeliverable = (deliverableToRemove) => {
+  const handleRemoveDeliverable = (deliverableToRemove: string) => {
     const newDeliverables = data.deliverables.filter((deliverable) => deliverable !== deliverableToRemove)
     updateData({
       deliverables: newDeliverables,
@@ -142,7 +170,7 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     }
   }
 
-  const handleTechnicalRequirementsChange = (e) => {
+  const handleTechnicalRequirementsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     updateData({ technicalRequirements: value })
 
@@ -155,7 +183,7 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     }
   }
 
-  const handleTechnicalRequirementsBlur = (e) => {
+  const handleTechnicalRequirementsBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     const errorMessage = validateField("technicalRequirements", value)
     setErrors((prev) => ({
@@ -316,4 +344,3 @@ export default function ProjectRequirementsForm({ data, updateData }) {
     </div>
   )
 }
-

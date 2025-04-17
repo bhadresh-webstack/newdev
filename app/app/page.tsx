@@ -8,7 +8,6 @@ import {
   ArrowUpRight,
   Clock,
   CheckCircle,
-  AlertCircle,
   MessageSquare,
   FileText,
   Users,
@@ -17,14 +16,18 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { useAuthStore } from "@/lib/stores/auth-store"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "@/lib/api/end-point" // Update to the correct path
 import type { Project, Task } from "@/lib/types"
 import { useRouter } from "next/navigation"
-import { Search, Plus, Calendar } from "lucide-react"
+import { ProjectCard } from "@/components/projects/project-card"
+import { EmptyProjects } from "@/components/projects/empty-projects"
+import { ProjectTaskList } from "@/components/projects/project-task-list"
+import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet"
+import { useTaskOperations } from "@/lib/hooks/use-task-operations"
+import { useToast } from "@/hooks/use-toast"
+import type { Task as TaskType } from "@/lib/stores/tasks-store"
 
 // Animation variants
 const fadeInUp = {
@@ -53,6 +56,13 @@ export default function DashboardPage() {
     inProgressTasks: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
+
+  // Add state for task detail sheet
+  const [selectedTask, setSelectedTask] = useState<TaskType | null>(null)
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+
+  const { handleUpdateTask } = useTaskOperations()
+  const { toast } = useToast()
 
   const userRole = user?.role || "user"
   const userName = user?.user_name || "User"
@@ -129,7 +139,7 @@ export default function DashboardPage() {
         title: "New Project",
         description: "Start a new website project",
         icon: FolderKanban,
-        href: "/projects/new",
+        href: "/app/projects/new",
         color: "from-blue-500 to-blue-600",
         iconBg: "bg-blue-500",
       },
@@ -137,23 +147,23 @@ export default function DashboardPage() {
         title: "Messages",
         description: "Contact your project team",
         icon: MessageSquare,
-        href: "/messages",
+        href: "/app/messages",
         color: "from-green-500 to-green-600",
         iconBg: "bg-green-500",
       },
-      {
-        title: "Documents",
-        description: "View project documents",
-        icon: FileText,
-        href: "/documents",
-        color: "from-amber-500 to-amber-600",
-        iconBg: "bg-amber-500",
-      },
+      // {
+      //   title: "Documents",
+      //   description: "View project documents",
+      //   icon: FileText,
+      //   href: "/app/documents",
+      //   color: "from-amber-500 to-amber-600",
+      //   iconBg: "bg-amber-500",
+      // },
       {
         title: "Payments",
         description: "Manage your subscriptions",
         icon: CreditCard,
-        href: "/payments",
+        href: "/app/payments",
         color: "from-purple-500 to-purple-600",
         iconBg: "bg-purple-500",
       },
@@ -163,7 +173,7 @@ export default function DashboardPage() {
         title: "Tasks",
         description: "View your assigned tasks",
         icon: CheckCircle,
-        href: "/tasks",
+        href: "/app/tasks",
         color: "from-blue-500 to-blue-600",
         iconBg: "bg-blue-500",
       },
@@ -171,7 +181,7 @@ export default function DashboardPage() {
         title: "Projects",
         description: "Manage active projects",
         icon: FolderKanban,
-        href: "/projects",
+        href: "/app/projects",
         color: "from-purple-500 to-purple-600",
         iconBg: "bg-purple-500",
       },
@@ -179,25 +189,25 @@ export default function DashboardPage() {
         title: "Messages",
         description: "Communicate with clients",
         icon: MessageSquare,
-        href: "/messages",
+        href: "/app/messages",
         color: "from-green-500 to-green-600",
         iconBg: "bg-green-500",
       },
-      {
-        title: "Documents",
-        description: "Access project files",
-        icon: FileText,
-        href: "/documents",
-        color: "from-amber-500 to-amber-600",
-        iconBg: "bg-amber-500",
-      },
+      // {
+      //   title: "Documents",
+      //   description: "Access project files",
+      //   icon: FileText,
+      //   href: "/app/documents",
+      //   color: "from-amber-500 to-amber-600",
+      //   iconBg: "bg-amber-500",
+      // },
     ],
     admin: [
       {
         title: "Team",
         description: "Manage team members",
         icon: Users,
-        href: "/admin/team",
+        href: "/app/admin/team",
         color: "from-indigo-500 to-indigo-600",
         iconBg: "bg-indigo-500",
       },
@@ -205,7 +215,7 @@ export default function DashboardPage() {
         title: "Projects",
         description: "Oversee all projects",
         icon: FolderKanban,
-        href: "/projects",
+        href: "/app/projects",
         color: "from-purple-500 to-purple-600",
         iconBg: "bg-purple-500",
       },
@@ -213,7 +223,7 @@ export default function DashboardPage() {
         title: "Settings",
         description: "Configure system settings",
         icon: CreditCard,
-        href: "/settings",
+        href: "/app/settings",
         color: "from-gray-500 to-gray-600",
         iconBg: "bg-gray-500",
       },
@@ -221,48 +231,101 @@ export default function DashboardPage() {
         title: "Analytics",
         description: "View performance metrics",
         icon: ArrowUpRight,
-        href: "/admin/analytics",
+        href: "/app/admin/analytics",
         color: "from-blue-500 to-blue-600",
         iconBg: "bg-blue-500",
-      },
-    ],
-    user: [
-      {
-        title: "Projects",
-        description: "View your projects",
-        icon: FolderKanban,
-        href: "/projects",
-        color: "from-blue-500 to-blue-600",
-        iconBg: "bg-blue-500",
-      },
-      {
-        title: "Tasks",
-        description: "Manage your tasks",
-        icon: CheckCircle,
-        href: "/tasks",
-        color: "from-green-500 to-green-600",
-        iconBg: "bg-green-500",
-      },
-      {
-        title: "Messages",
-        description: "View your messages",
-        icon: MessageSquare,
-        href: "/messages",
-        color: "from-amber-500 to-amber-600",
-        iconBg: "bg-amber-500",
-      },
-      {
-        title: "Settings",
-        description: "Configure your account",
-        icon: CreditCard,
-        href: "/settings",
-        color: "from-purple-500 to-purple-600",
-        iconBg: "bg-purple-500",
       },
     ],
   }
 
   const currentActions = quickActions[userRole as keyof typeof quickActions] || quickActions.user
+
+  // Add task click handler
+  const handleTaskClick = (task: TaskType) => {
+    setSelectedTask(task)
+    setIsTaskDetailOpen(true)
+  }
+
+  // Add task status change handler
+  const handleTaskStatusChange = async (taskId: string, newStatus: string): Promise<void> => {
+    try {
+      // Optimistically update the UI first
+      const taskToUpdate = recentTasks.find((t) => t.id === taskId)
+      if (taskToUpdate) {
+        // Update the selected task if it's open in the detail view
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus,
+          })
+        }
+
+        // Update the task in the recentTasks array
+        setRecentTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)),
+        )
+      }
+
+      // Then make the API call
+      await handleUpdateTask(taskId, { status: newStatus })
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Task status updated to ${newStatus}`,
+      })
+    } catch (error) {
+      console.error("Error updating task status:", error)
+
+      // Show error message
+      toast({
+        title: "Error",
+        description: "Failed to update task status. Please try again.",
+        variant: "destructive",
+      })
+
+      // Revert optimistic update if there was an error
+      if (selectedTask && selectedTask.id === taskId) {
+        const originalTask = recentTasks.find((t) => t.id === taskId)
+        if (originalTask) {
+          setSelectedTask(originalTask)
+        }
+      }
+    }
+  }
+
+  // Add task update handler
+  const handleTaskUpdate = async (updatedTask: TaskType): Promise<void> => {
+    try {
+      // Update the task in the recentTasks array
+      setRecentTasks((prevTasks) => prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+
+      // Update the selected task if it's currently open
+      if (selectedTask && selectedTask.id === updatedTask.id) {
+        setSelectedTask(updatedTask)
+      }
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: "Task updated successfully",
+      })
+    } catch (error) {
+      console.error("Error updating task:", error)
+
+      // Show error message
+      toast({
+        title: "Error",
+        description: "Failed to update task. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Add function to get related tasks
+  const getRelatedTasks = (taskId: string, projectId: string): TaskType[] => {
+    return recentTasks.filter((t) => t.project_id === projectId && t.id !== taskId)
+  }
 
   if (isLoading || authLoading) {
     return (
@@ -590,93 +653,14 @@ export default function DashboardPage() {
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {projects.slice(0, 3).length > 0 ? (
-            projects.slice(0, 3).map((project) => (
-              <motion.div
-                key={project.id}
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                whileHover={{ y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card
-                  className="overflow-hidden relative group border-border/40 bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50 shadow-sm hover:shadow-md transition-all duration-300"
-                  onClick={() => router.push(`/projects/${project.id}`)}
-                >
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-purple-600 z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-                  <div className="p-3 relative z-10">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 pr-4">
-                        <h3 className="text-base font-semibold truncate">{project.title}</h3>
-                        {(userRole === "admin" || userRole === "team_member") && (
-                          <p className="text-xs text-muted-foreground">
-                            {project._count?.tasks || 0} tasks • {project.completed_tasks || 0} completed
-                          </p>
-                        )}
-                        {userRole === "customer" && (
-                          <p className="text-xs text-muted-foreground">
-                            Created: {new Date(project.created_at).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground font-medium">Progress</span>
-                        <span className="font-semibold">{project.progress_percentage || 0}%</span>
-                      </div>
-                      <div className="h-1 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all duration-500"
-                          style={{ width: `${project.progress_percentage || 0}%` }}
-                        ></div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 mt-1 border-t border-border/30 text-xs">
-                        <div className="flex items-center gap-1">
-                          <Badge
-                            className={`px-1.5 py-0 text-[10px] font-medium ${
-                              project.progress_percentage >= 100
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                : project.progress_percentage > 0
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
-                                  : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
-                            }`}
-                          >
-                            {project.progress_percentage >= 100
-                              ? "Completed"
-                              : project.progress_percentage > 0
-                                ? "In Progress"
-                                : "Planning"}
-                          </Badge>
-                        </div>
-
-                        {project.start_date && project.duration_days && (
-                          <div className="flex items-center text-[10px] text-muted-foreground">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            <span>
-                              {calculateDueDate(project.start_date, project.duration_days)?.toLocaleDateString(
-                                undefined,
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                },
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))
+          {projects.length > 0 ? (
+            projects
+              .slice(0, 3)
+              .map((project) => (
+                <ProjectCard key={project.id} project={project} onDelete={() => {}} isDeleting={false} />
+              ))
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -684,19 +668,7 @@ export default function DashboardPage() {
               transition={{ duration: 0.5 }}
               className="col-span-full"
             >
-              <div className="flex flex-col items-center justify-center py-16 bg-card rounded-lg border border-dashed">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <Search className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No projects found</h3>
-                <p className="text-muted-foreground text-center max-w-md">You don't have any projects yet</p>
-                {(userRole === "admin" || userRole === "customer") && (
-                  <Button className="mt-6" onClick={() => router.push("/projects/new")}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Project
-                  </Button>
-                )}
-              </div>
+              <EmptyProjects searchQuery={""} userRole={userRole} />
             </motion.div>
           )}
         </motion.div>
@@ -720,61 +692,31 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {recentTasks.map((task, index) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 * index }}
-              >
-                <Card className="hover:shadow-sm transition-all">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">
-                          {task.status === "Completed" ? (
-                            <CheckCircle className="h-5 w-5 text-green-500" />
-                          ) : task.status === "In Progress" ? (
-                            <Clock className="h-5 w-5 text-amber-500" />
-                          ) : (
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{task.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{task.description}</p>
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              {task.project?.title || "No Project"}
-                            </Badge>
-                            <Badge
-                              className={`text-xs ${
-                                task.status === "Completed"
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                  : task.status === "In Progress"
-                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100"
-                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-                              }`}
-                            >
-                              {task.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      {task.assignee && (
-                        <Avatar className="h-8 w-8 hidden sm:flex">
-                          <AvatarImage src={task.assignee.profile_image || undefined} alt={task.assignee.user_name} />
-                          <AvatarFallback>{getInitials(task.assignee.user_name)}</AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+          {recentTasks.length > 0 ? (
+            <ProjectTaskList tasks={recentTasks} onTaskClick={handleTaskClick} />
+          ) : (
+            <Card className="p-8 text-center">
+              <div className="flex flex-col items-center justify-center">
+                <CheckCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium">No recent tasks</h3>
+                <p className="text-muted-foreground mt-1">You don't have any tasks assigned to you yet.</p>
+              </div>
+            </Card>
+          )}
         </motion.div>
+      )}
+
+      {/* Task Detail Sheet */}
+      {selectedTask && (
+        <TaskDetailSheet
+          task={selectedTask}
+          isOpen={isTaskDetailOpen}
+          onClose={() => setIsTaskDetailOpen(false)}
+          onStatusChange={handleTaskStatusChange}
+          relatedTasks={selectedTask ? getRelatedTasks(selectedTask.id, selectedTask.project_id) : []}
+          handleUpdateTask={handleUpdateTask}
+          onTaskUpdate={handleTaskUpdate}
+        />
       )}
     </div>
   )

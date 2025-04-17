@@ -3,17 +3,21 @@
 import { useState, useCallback } from "react"
 import { useTasksStore, type Task } from "@/lib/stores/tasks-store"
 import { toast } from "@/hooks/use-toast"
+import type { CreateTaskData } from "@/lib/types"
 
 export function useTaskOperations() {
   const [isProcessing, setIsProcessing] = useState(false)
   const { createTask, updateTask, deleteTask, updateTaskGroup, batchAssignTasks, batchUnassignTasks } = useTasksStore()
 
   const handleCreateTask = useCallback(
-    async (taskData: Omit<Task, "id" | "created_at" | "updated_at">) => {
+    async (taskData: CreateTaskData) => {
       setIsProcessing(true)
 
       try {
-        const { data, error } = await createTask(taskData)
+        const { data, error } = await createTask({
+          ...taskData,
+          assigned_to: taskData.assigned_to ?? null, // Ensure assigned_to is string | null
+        })
 
         if (error) {
           toast({

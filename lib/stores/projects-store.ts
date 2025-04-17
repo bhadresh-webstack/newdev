@@ -1,7 +1,6 @@
 "use client"
 
 import { create } from "zustand"
-// import { ENDPOINT } from "@/lib/constants/endpoints"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "../api/end-point"
 
@@ -9,7 +8,6 @@ export type Project = {
   id: string
   title: string
   description: string
-  category:string
   status: string
   customer_id: string
   customer_name?: string
@@ -28,6 +26,7 @@ export type Project = {
   duration_days?: number
   priority?: string
   visibility?: string
+  category?: string
   customer?: {
     id: string
     user_name: string
@@ -40,6 +39,9 @@ export type Project = {
   _count?: {
     tasks: number
   }
+  // Add these properties for team member relationship
+  isTeamMember?: boolean
+  hasAssignedTasks?: boolean
 }
 
 export type ProjectStats = {

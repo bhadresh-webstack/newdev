@@ -7,6 +7,18 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 
+// Add proper type definitions at the top of the file
+interface BudgetData {
+  tier: string
+  amount: number
+  paymentType: string
+}
+
+interface ProjectBudgetFormProps {
+  data: BudgetData
+  updateData: (data: Partial<BudgetData>) => void
+}
+
 const pricingTiers = [
   {
     id: "basic",
@@ -50,7 +62,8 @@ const pricingTiers = [
   },
 ]
 
-export default function ProjectBudgetForm({ data, updateData }) {
+// Update the function signature with proper types
+export default function ProjectBudgetForm({ data, updateData }: ProjectBudgetFormProps) {
   // Local state to ensure UI updates immediately
   const [selectedTier, setSelectedTier] = useState(data.tier || "")
 
@@ -59,7 +72,7 @@ export default function ProjectBudgetForm({ data, updateData }) {
     setSelectedTier(data.tier || "")
   }, [data.tier])
 
-  const formatCurrency = (value) => {
+  const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -67,7 +80,7 @@ export default function ProjectBudgetForm({ data, updateData }) {
     }).format(value)
   }
 
-  const handleTierSelect = (tierId) => {
+  const handleTierSelect = (tierId: string): void => {
     setSelectedTier(tierId)
     updateData({ tier: tierId })
   }

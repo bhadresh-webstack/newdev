@@ -9,6 +9,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+interface DetailsData {
+  title: string
+  category: string
+  description: string
+  visibility: string
+  errors?: {
+    title?: string
+    category?: string
+    description?: string
+  }
+}
+
+interface ProjectDetailsFormProps {
+  data: DetailsData
+  updateData: (data: Partial<DetailsData>) => void
+}
+
 const categories = [
   "Web Development",
   "Mobile App",
@@ -21,8 +38,12 @@ const categories = [
   "Other",
 ]
 
-export default function ProjectDetailsForm({ data, updateData }) {
-  const [errors, setErrors] = useState({
+export default function ProjectDetailsForm({ data, updateData }: ProjectDetailsFormProps) {
+  const [errors, setErrors] = useState<{
+    title: string
+    category: string
+    description: string
+  }>({
     title: "",
     category: "",
     description: "",
@@ -31,15 +52,16 @@ export default function ProjectDetailsForm({ data, updateData }) {
   // Update local errors when they come from parent component
   useEffect(() => {
     if (data.errors) {
-      setErrors(data.errors)
+      setErrors(data.errors as any)
     }
   }, [data.errors])
 
-  const handleChange = (field, value) => {
+  // Fix the handleChange function with proper types
+  const handleChange = (field: keyof DetailsData, value: string) => {
     updateData({ [field]: value })
 
     // Clear error when user types
-    if (errors[field]) {
+    if (errors[field as keyof typeof errors]) {
       setErrors((prev) => ({
         ...prev,
         [field]: "",
@@ -47,7 +69,8 @@ export default function ProjectDetailsForm({ data, updateData }) {
     }
   }
 
-  const validateField = (field, value) => {
+  // Fix the validateField function with proper types
+  const validateField = (field: keyof DetailsData, value: string): string => {
     switch (field) {
       case "title":
         return !value.trim() ? "Project title is required" : ""
@@ -64,7 +87,8 @@ export default function ProjectDetailsForm({ data, updateData }) {
     }
   }
 
-  const handleBlur = (field, value) => {
+  // Fix the handleBlur function with proper types
+  const handleBlur = (field: keyof DetailsData, value: string) => {
     const errorMessage = validateField(field, value)
     setErrors((prev) => ({
       ...prev,
@@ -72,7 +96,6 @@ export default function ProjectDetailsForm({ data, updateData }) {
     }))
   }
 
-  console.log("data",data)
   return (
     <div className="space-y-6">
       <div className="space-y-2">

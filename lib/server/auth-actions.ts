@@ -12,8 +12,8 @@ import { redirect } from "next/navigation"
 export async function getServerSideProfile() {
   try {
     // Get token from cookies - await the cookies() function
-    const cookieStore = cookies()
-    const token = await cookieStore.get("auth_token")?.value
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth_token")?.value
 
     if (!token) {
       // Delete the auth_token cookie
@@ -79,9 +79,10 @@ export async function getServerSideProfile() {
       user,
     }
   } catch (error) {
+    const cookieStore = await cookies()
     console.error("Server-side profile fetch error:", error)
     // Delete the auth_token cookie
-    cookies().delete("auth_token")
+    cookieStore.delete("auth_token")
     // Redirect to login page
     redirect("/login")
 
@@ -99,8 +100,8 @@ export async function getServerSideProfile() {
 export async function checkAuthStatus() {
   try {
     // Await the cookies() function
-    const cookieStore = cookies()
-    const token = await cookieStore.get("auth_token")?.value
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth_token")?.value
 
     if (!token) {
       return { authenticated: false }

@@ -24,3 +24,14 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
     timeout = setTimeout(later, wait)
   }
 }
+
+export type CreateTaskData = {
+  project_id: string
+  title: string
+  description: string
+  status: string
+  task_group: string
+  assigned_to?: string | null
+  priority?: string
+  due_date?: string | null
+}

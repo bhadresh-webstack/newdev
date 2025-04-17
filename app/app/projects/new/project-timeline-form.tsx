@@ -13,7 +13,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 
-export default function ProjectTimelineForm({ data, updateData }) {
+interface TimelineData {
+  startDate: Date
+  duration: number
+  priority: string
+}
+
+interface ProjectTimelineFormProps {
+  data: TimelineData
+  updateData: (data: Partial<TimelineData>) => void
+}
+
+export default function ProjectTimelineForm({ data, updateData }: ProjectTimelineFormProps) {
   const [estimatedEndDate, setEstimatedEndDate] = useState(addDays(data.startDate, data.duration))
 
   useEffect(() => {
@@ -152,4 +163,3 @@ export default function ProjectTimelineForm({ data, updateData }) {
     </div>
   )
 }
-

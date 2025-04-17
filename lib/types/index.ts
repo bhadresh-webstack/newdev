@@ -67,6 +67,9 @@ export interface Project {
   _count?: {
     tasks: number
   }
+  // Add these properties for team member relationship
+  isTeamMember?: boolean
+  hasAssignedTasks?: boolean
 }
 
 export interface CreateProjectData {
@@ -159,6 +162,7 @@ export interface CreateTeamMemberData {
 // Message Types
 export interface Message {
   id: string
+  type?: string
   project_id: string
   sender_id: string
   receiver_id?: string
@@ -306,6 +310,7 @@ export interface AuthState {
   isLoading: boolean
   error: string | null
 }
+
 
 // Auth related types
 export interface AuthError {

@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Save } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card } from "@/components/ui/card"
+import { TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useProjectsStore } from "@/lib/stores/projects-store"
+import { useProjectForm } from "@/lib/hooks/use-project-form"
 
+import { ProjectFormContainer } from "@/components/projects/project-form-container"
+import { ProjectFormTabs } from "@/components/projects/project-form-tabs"
 import ProjectDetailsForm from "../../new/project-details-form"
 import ProjectRequirementsForm from "../../new/project-requirements-form"
 import ProjectBudgetForm from "../../new/project-budget-form"
@@ -18,36 +19,22 @@ export default function EditProjectPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState("details")
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const { getProjectById, updateProject } = useProjectsStore()
   const projectId = params.id as string
 
-  // Initialize form data with default values
-  const [formData, setFormData] = useState({
-    details: {
-      title: "",
-      category: "",
-      description: "",
-      visibility: "public",
-    },
-    requirements: {
-      technicalRequirements: "",
-      skills: [],
-      deliverables: [],
-    },
-    budget: {
-      tier: "standard",
-      amount: 2500,
-      paymentType: "fixed",
-    },
-    timeline: {
-      duration: 30,
-      startDate: new Date(),
-      priority: "medium",
-    },
-  })
+  const {
+    formData,
+    updateData,
+    activeTab,
+    setActiveTab,
+    isSubmitting,
+    setIsSubmitting,
+    formErrors,
+    handleTabChange,
+    handleNextTab,
+    handlePrevTab,
+  } = useProjectForm()
 
   // Load project data
   useEffect(() => {
@@ -67,28 +54,29 @@ export default function EditProjectPage() {
 
         if (data) {
           // Transform project data to form data structure
-          setFormData({
-            details: {
-              title: data.title || "",
-              category: data.category || "",
-              description: data.description || "",
-              visibility: data.visibility || "public",
-            },
-            requirements: {
-              technicalRequirements: data.technical_requirements || "",
-              skills: data.required_skills ? data.required_skills.split(", ") : [],
-              deliverables: data.deliverables ? data.deliverables.split(", ") : [],
-            },
-            budget: {
-              tier: data.pricing_tier || "standard",
-              amount: data.budget || 2500,
-              paymentType: data.payment_type || "fixed",
-            },
-            timeline: {
-              duration: data.duration_days || 30,
-              startDate: data.start_date ? new Date(data.start_date) : new Date(),
-              priority: data.priority || "medium",
-            },
+          updateData("details", {
+            title: data.title || "",
+            category: data.category || "",
+            description: data.description || "",
+            visibility: data.visibility || "public",
+          })
+
+          updateData("requirements", {
+            technicalRequirements: data.technical_requirements || "",
+            skills: data.required_skills ? data.required_skills.split(", ") : [],
+            deliverables: data.deliverables ? data.deliverables.split(", ") : [],
+          })
+
+          updateData("budget", {
+            tier: data.pricing_tier || "standard",
+            amount: data.budget || 2500,
+            paymentType: data.payment_type || "fixed",
+          })
+
+          updateData("timeline", {
+            duration: data.duration_days || 30,
+            startDate: data.start_date ? new Date(data.start_date) : new Date(),
+            priority: data.priority || "medium",
           })
         }
       } catch (error) {
@@ -106,26 +94,10 @@ export default function EditProjectPage() {
     if (projectId) {
       fetchProject()
     }
-  }, [projectId, getProjectById, toast])
-
-  const updateData = (section, data) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        ...data,
-      },
-    }))
-  }
+  }, [projectId, getProjectById, toast, updateData])
 
   const handleBack = () => {
     router.push(`/app/projects/${projectId}`)
-  }
-
-  const handleTabChange = (value) => {
-    setActiveTab(value)
-    // Scroll to top when changing tabs
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleSave = async () => {
@@ -188,79 +160,50 @@ export default function EditProjectPage() {
     )
   }
 
-  console.log("formDataformData",formData)
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-10">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={handleBack}>
-            <ArrowLeft className="h-5 w-5" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Edit Project</h1>
-            <p className="text-muted-foreground">Update your project details</p>
-          </div>
-        </div>
-        <Button
-          onClick={handleSave}
-          disabled={isSubmitting}
-          className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90"
-        >
-          {isSubmitting ? (
-            "Saving..."
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Save Changes
-            </>
-          )}
-        </Button>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid grid-cols-4 h-auto p-1">
-          <TabsTrigger value="details" className="py-2.5">
-            Details
-          </TabsTrigger>
-          <TabsTrigger value="requirements" className="py-2.5">
-            Requirements
-          </TabsTrigger>
-          <TabsTrigger value="budget" className="py-2.5">
-            Budget
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="py-2.5">
-            Timeline
-          </TabsTrigger>
-        </TabsList>
-
+    <ProjectFormContainer
+      title="Edit Project"
+      subtitle="Update your project details"
+      onBack={handleBack}
+      onSave={handleSave}
+      isSubmitting={isSubmitting}
+      showSaveButton={true}
+    >
+      <ProjectFormTabs
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}
+        handleNextTab={handleNextTab}
+        handlePrevTab={handlePrevTab}
+        formErrors={formErrors}
+        showReviewTab={false}
+      >
         <TabsContent value="details" className="space-y-6">
-          <div className="bg-card rounded-lg border shadow-sm p-6">
+          <Card className="bg-card rounded-lg border shadow-sm p-6">
             <ProjectDetailsForm data={formData.details} updateData={(data) => updateData("details", data)} />
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="requirements" className="space-y-6">
-          <div className="bg-card rounded-lg border shadow-sm p-6">
+          <Card className="bg-card rounded-lg border shadow-sm p-6">
             <ProjectRequirementsForm
               data={formData.requirements}
               updateData={(data) => updateData("requirements", data)}
             />
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="budget" className="space-y-6">
-          <div className="bg-card rounded-lg border shadow-sm p-6">
+          <Card className="bg-card rounded-lg border shadow-sm p-6">
             <ProjectBudgetForm data={formData.budget} updateData={(data) => updateData("budget", data)} />
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-6">
-          <div className="bg-card rounded-lg border shadow-sm p-6">
+          <Card className="bg-card rounded-lg border shadow-sm p-6">
             <ProjectTimelineForm data={formData.timeline} updateData={(data) => updateData("timeline", data)} />
-          </div>
+          </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+      </ProjectFormTabs>
+    </ProjectFormContainer>
   )
 }

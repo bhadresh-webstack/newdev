@@ -1,9 +1,10 @@
 import { create } from "zustand"
 import { apiRequest } from "../useApi"
 import { ENDPOINT } from "../api/end-point"
+import { TeamMember } from "@/lib/types"
 
 type TeamMemberState = {
-  teamMemberList: any[] | null
+  teamMemberList: TeamMember[] | null
   isLoading: boolean
   error: string | null
 

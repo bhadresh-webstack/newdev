@@ -5,9 +5,10 @@ import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { NotificationsSidebar } from "./notifications-sidebar"
+import { Notification } from "@/lib/types"
 
 // Demo notification data with more entries to test scrolling
-export const demoNotifications = [
+export const demoNotifications: Notification[] = [
   {
     id: "1",
     read: false,
@@ -179,4 +180,3 @@ export function NotificationsButton() {
     </>
   )
 }
-

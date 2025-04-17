@@ -1,12 +1,15 @@
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
-// ✅ **GET: Fetch Single User by ID**
-export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!user) {
@@ -20,28 +23,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-// ✅ **PUT: Update a User by ID**
-// export async function PUT(req: Request, { params }: { params: { id: string } }) {
-//   try {
-//     const { full_name, role, profile_image } = await req.json();
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
-//     const updatedUser = await prisma.user.update({
-//       where: { id: params.id },
-//       data: { full_name, role, profile_image },
-//     });
-
-//     return NextResponse.json(updatedUser);
-//   } catch (error) {
-//     console.error("Error updating user:", error);
-//     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
-//   }
-// }
-
-// ✅ **DELETE: Remove a User by ID**
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: "User deleted successfully" });

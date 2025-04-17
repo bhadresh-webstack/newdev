@@ -1,14 +1,14 @@
-import { sign, verify } from "jsonwebtoken"
+import { sign, verify, type Secret, type SignOptions } from "jsonwebtoken"
 import { hash, compare } from "bcrypt"
 import nodemailer from "nodemailer"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+const JWT_SECRET: Secret = process.env.JWT_SECRET || "your-secret-key"
 
 // Generate JWT token
 export function generateToken(payload: any, expiresIn = "7d") {
-  return sign(payload, JWT_SECRET, { expiresIn })
+  return sign(payload, JWT_SECRET, { expiresIn } as SignOptions)
 }
 
 // Verify JWT token

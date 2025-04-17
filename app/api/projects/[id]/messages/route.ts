@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth-utils"
-import { broadcastToProject } from "@/app/api/messages/sse/route"
 import prisma from "@/lib/prisma"
+import { broadcastToProject } from "@/lib/utils/sse-utils"
 
 
 // GET all messages for a specific project

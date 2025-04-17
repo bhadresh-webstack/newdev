@@ -5,7 +5,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // ✅ Ensure cookies and authentication tokens are sent
+  withCredentials: true,
 });
 
 // ✅ Universal API Request Wrapper
@@ -20,14 +20,12 @@ export const apiRequest = async <T = any>(
       method,
       url,
       data,
-      withCredentials: true, // ✅ Ensure credentials are always sent
+      withCredentials: true,
       ...config,
     });
 
-    console.log('response', response);
     return { data: response.data, error: null };
   } catch (error: any) {
-    console.error('API Request Error:', error);
     return {
       data: null,
       error: error.response?.data?.error || error.message || 'Something went wrong',

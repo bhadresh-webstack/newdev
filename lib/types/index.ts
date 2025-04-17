@@ -150,6 +150,8 @@ export interface TeamMember {
   team_role?: string
   created_at?: string
   updated_at?: string | null
+  department?: string
+  status?: string
 }
 
 export interface CreateTeamMemberData {
@@ -342,4 +344,14 @@ export interface User {
   id: string
   email: string
   userName?: string
+}
+
+type NotificationType = "info" | "success" | "warning" | "error"
+export interface Notification {
+  id: string
+  read: boolean
+  title:string
+  message:string
+  time:string
+  type:NotificationType
 }

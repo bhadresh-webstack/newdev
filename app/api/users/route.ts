@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
     // ✅ Generate a JWT-based password reset link (valid for 1 hour)
     const resetToken = jwt.sign({ email }, process.env.JWT_SECRET!, { expiresIn: "1h" });
-    const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     // ✅ Send Welcome Email with Reset Link
     const transporter = nodemailer.createTransport({

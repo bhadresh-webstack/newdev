@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: "Authentication failed",
+        // error: "Authentication failed",
       })
       return false
     }

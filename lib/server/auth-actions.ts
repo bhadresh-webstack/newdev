@@ -1,6 +1,6 @@
 "use server"
 
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { verifyToken } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
@@ -11,15 +11,18 @@ import { redirect } from "next/navigation"
  */
 export async function getServerSideProfile() {
   try {
-    // Get token from cookies - await the cookies() function
     const cookieStore = await cookies()
     const token = cookieStore.get("auth_token")?.value
 
+    // Get current path from headers
+    const headerList = await headers()
+    const currentPath = headerList.get("x-invoke-path") || "/"
+
+    const redirectTo = (currentPath === "/") ? "/" : "/login"
+
     if (!token) {
-      // Delete the auth_token cookie
       cookieStore.delete("auth_token")
-      // Redirect to login page
-      redirect("/login")
+      redirect(redirectTo)
 
       return {
         success: false,
@@ -28,14 +31,11 @@ export async function getServerSideProfile() {
       }
     }
 
-    // Verify token
     const decoded = verifyToken(token)
 
     if (!decoded || !decoded.userId) {
-      // Delete the auth_token cookie
       cookieStore.delete("auth_token")
-      // Redirect to login page
-      redirect("/login")
+      redirect(redirectTo)
 
       return {
         success: false,
@@ -44,7 +44,6 @@ export async function getServerSideProfile() {
       }
     }
 
-    // Find user directly from database
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -61,10 +60,8 @@ export async function getServerSideProfile() {
     })
 
     if (!user) {
-      // Delete the auth_token cookie
       cookieStore.delete("auth_token")
-      // Redirect to login page
-      redirect("/login")
+      redirect(redirectTo)
 
       return {
         success: false,
@@ -80,11 +77,13 @@ export async function getServerSideProfile() {
     }
   } catch (error) {
     const cookieStore = await cookies()
+    const headerList = await headers()
+    const currentPath = headerList.get("x-invoke-path") || "/"
+    const redirectTo = (currentPath === "/") ? "/" : "/login"
+
     console.error("Server-side profile fetch error:", error)
-    // Delete the auth_token cookie
     cookieStore.delete("auth_token")
-    // Redirect to login page
-    redirect("/login")
+    redirect(redirectTo)
 
     return {
       success: false,

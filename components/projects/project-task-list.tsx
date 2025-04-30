@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, CheckCircle, Circle, Clock, MoreHorizontal } from "lucide-react"
+import { Calendar, CheckCircle, Circle, Clock, MoreHorizontal, Plus } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -30,13 +30,38 @@ export function ProjectTaskList({ tasks, onTaskClick }: ProjectTaskListProps) {
       .toUpperCase()
   }
 
+  // Function to get relative time (days ago)
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - date.getTime())
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+    const diffMinutes = Math.floor(diffTime / (1000 * 60))
+
+    if (diffDays > 0) {
+      return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`
+    } else if (diffHours > 0) {
+      return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`
+    } else if (diffMinutes > 0) {
+      return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`
+    } else {
+      return "Just now"
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-border/50 shadow-sm overflow-hidden">
       <div className="grid grid-cols-12 gap-3 p-3 text-xs font-medium text-muted-foreground border-b">
-        <div className="col-span-6 md:col-span-5">Task</div>
-        <div className="col-span-3 md:col-span-2 text-center">Status</div>
-        <div className="hidden md:block md:col-span-2">Due Date</div>
-        <div className="col-span-3 md:col-span-3 text-right">Assigned To</div>
+        <div className="col-span-5">Task</div>
+        <div className="col-span-2 text-center">Assignee</div>
+        <div className="col-span-2 text-center">Due Date</div>
+        <div className="col-span-2 text-center">Priority</div>
+        <div className="col-span-1 flex justify-end">
+          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-primary/10 text-primary">
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       <div className="divide-y divide-border/50">
@@ -53,8 +78,8 @@ export function ProjectTaskList({ tasks, onTaskClick }: ProjectTaskListProps) {
               {task.priority === "Medium" && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
 
               {/* Task title and description */}
-              <div className="col-span-6 md:col-span-5 flex items-start gap-2">
-                <div className="mt-1 flex-shrink-0">
+              <div className="col-span-5 flex items-center gap-2">
+                <div className="flex-shrink-0">
                   {task.status === "Completed" ? (
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   ) : task.status === "In Progress" ? (
@@ -63,74 +88,31 @@ export function ProjectTaskList({ tasks, onTaskClick }: ProjectTaskListProps) {
                     <Circle className="h-4 w-4 text-slate-400" />
                   )}
                 </div>
-                <div>
-                  <h3 className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-1">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <h3 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
                     {task.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{task.description}</p>
-                  {task.due_date && (
-                    <div className="flex items-center text-[10px] text-muted-foreground mt-0.5">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(task.due_date).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 bg-background">
-                      {task.task_group || "Backlog"}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground">
-                      Created {new Date(task.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-1 py-0 border-muted-foreground/30 bg-background flex-shrink-0"
+                  >
+                    {task.task_group || "Backlog"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+                    {getRelativeTime(task.created_at)}
+                  </span>
                 </div>
               </div>
 
-              {/* Status */}
-              <div className="col-span-3 md:col-span-2 flex justify-center">
-                <Badge
-                  className={`${
-                    task.status === "Completed"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                      : task.status === "In Progress"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
-                        : task.status === "Blocked"
-                          ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-                          : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
-                  } px-2.5 py-0.5 font-medium`}
-                >
-                  {task.status}
-                </Badge>
-              </div>
-
-              {/* Due Date */}
-              <div className="hidden md:flex md:col-span-2 items-center text-sm">
-                {task.due_date ? (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">No due date</span>
-                )}
-              </div>
-
-              {/* Assigned To */}
-              <div className="col-span-3 md:col-span-3 flex items-center justify-end gap-2">
+              {/* Assignee */}
+              <div className="col-span-2 flex justify-center">
                 {task.assignee ? (
-                  <div className="flex items-center gap-2">
-                    <div className="hidden md:block text-sm text-right">
-                      <p className="font-medium line-clamp-1">{task.assignee.user_name}</p>
-                    </div>
-                    <Avatar className="h-8 w-8 border-2 border-background">
-                      <AvatarImage src={task.assignee.profile_image || undefined} alt={task.assignee.user_name} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
-                        {getInitials(task.assignee.user_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
+                  <Avatar className="h-7 w-7 border border-muted">
+                    <AvatarImage src={task.assignee.profile_image || undefined} alt={task.assignee.user_name} />
+                    <AvatarFallback className="bg-primary text-white text-xs">
+                      {getInitials(task.assignee.user_name)}
+                    </AvatarFallback>
+                  </Avatar>
                 ) : (
                   <Badge variant="outline" className="text-xs bg-slate-100 dark:bg-slate-800">
                     Unassigned
@@ -138,8 +120,35 @@ export function ProjectTaskList({ tasks, onTaskClick }: ProjectTaskListProps) {
                 )}
               </div>
 
-              {/* Action button that appears on hover */}
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Due Date */}
+              <div className="col-span-2 flex justify-center items-center text-sm">
+                {task.due_date ? (
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs">{new Date(task.due_date).toLocaleDateString()}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No due date</span>
+                )}
+              </div>
+
+              {/* Priority */}
+              <div className="col-span-2 flex justify-center">
+                <Badge
+                  className={`${
+                    task.priority === "High"
+                      ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100"
+                      : task.priority === "Medium"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                        : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                  } px-2.5 py-0.5 text-xs font-medium`}
+                >
+                  {task.priority || "Low"}
+                </Badge>
+              </div>
+
+              {/* Three dots menu */}
+              <div className="col-span-1 flex justify-end">
                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>

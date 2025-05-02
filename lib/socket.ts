@@ -2,7 +2,7 @@ import { io, type Socket } from "socket.io-client"
 import { toast } from "@/hooks/use-toast"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "./api/end-point"
-import { Message } from "./types"
+import type { Message } from "./types"
 
 // Socket instance that will be reused across the application
 let socket: Socket | null = null
@@ -163,14 +163,13 @@ export const initializeProjectConnection = (projectId: string, userId: string) =
 }
 
 // Find temporary ID for a real message based on content matching
-function findTempIdForRealMessage(realMessage : Message) {
+function findTempIdForRealMessage(realMessage: Message) {
   for (const [tempId, messageData] of tempMessageIds.entries()) {
     try {
       const data = JSON.parse(messageData)
-      // Match based on sender, receiver, message content and timestamp proximity
+      // Match based on sender, message content and timestamp proximity
       if (
         data.sender_id === realMessage.sender_id &&
-        data.receiver_id === realMessage.receiver_id &&
         data.message === realMessage.message &&
         // Check if timestamps are within 10 seconds of each other
         Math.abs(new Date(data.created_at).getTime() - new Date(realMessage.created_at).getTime()) < 10000
@@ -245,6 +244,7 @@ export const sendMessage = async (projectId: string, message: string, senderId: 
       throw new Error(error)
     }
 
+    // Return the data so we can update the UI with the real message
     return { success: true, data, tempId }
   } catch (error) {
     console.error("Error sending message:", error)

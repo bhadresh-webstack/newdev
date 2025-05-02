@@ -5,13 +5,14 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { format, isToday, isYesterday } from "date-fns"
-import { Search, Send, Paperclip, Smile, MoreVertical, Info, ChevronLeft, Check, CheckCheck } from "lucide-react"
+import { format } from "date-fns"
+import { MessageSquare, Search, Send, ChevronLeft } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/lib/stores/auth-store"
 import { useProjectsStore } from "@/lib/stores/projects-store"
@@ -141,33 +142,45 @@ export default function MessagesPage() {
 
     // Add message listener
     const handleNewMessage = (message: Message, isReplacement = false) => {
-      if (!message || message.type === "connection" || !message.message) {
-        return
-      }
+      console.log("New message received:", message, isReplacement ? "(replacement)" : "")
 
-      setMessages((prev) => {
-        if (isReplacement) {
-          // Replace temporary message with real one
-          return prev.map((msg) =>
-            msg.id === message.id ||
-            (msg.id.toString().startsWith("temp-") &&
-              msg.sender_id === message.sender_id &&
-              msg.message === message.message)
-              ? message
-              : msg,
-          )
-        } else {
+      if (isReplacement) {
+        // Replace temporary message with real one
+        setMessages((prev) =>
+          prev.map((msg) => {
+            // Check if this is a temp message that should be replaced
+            if (msg.isTemp && msg.sender_id === message.sender_id && msg.message === message.message) {
+              return { ...message, isTemp: false }
+            }
+            return msg
+          }),
+        )
+      } else {
+        // Add new message if it doesn't already exist
+        setMessages((prev) => {
           // Check if message already exists
           const exists = prev.some((m) => m.id === message.id)
           if (exists) return prev
           return [...prev, message]
-        }
-      })
+        })
 
-      // Scroll to bottom when new message arrives
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-      }, 100)
+        // Update last message in conversation
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                last_message: {
+                  content: message.message,
+                  created_at: message.created_at,
+                  sender_id: message.sender_id,
+                },
+              }
+            }
+            return conv
+          }),
+        )
+      }
     }
 
     addMessageListener(activeConversation, handleNewMessage)
@@ -206,24 +219,43 @@ export default function MessagesPage() {
   // Format message timestamp
   const formatMessageTime = (timestamp: string) => {
     const date = new Date(timestamp)
-    if (isToday(date)) {
-      return format(date, "h:mm a")
-    } else if (isYesterday(date)) {
-      return "Yesterday"
-    } else {
-      return format(date, "MMM d")
-    }
+    return format(date, "h:mm a")
   }
 
   // Group messages by date
-  const groupedMessages = messages.reduce((groups: Record<string, Message[]>, message) => {
-    const date = new Date(message.created_at).toDateString()
-    if (!groups[date]) {
-      groups[date] = []
-    }
-    groups[date].push(message)
-    return groups
-  }, {})
+  const groupMessagesByDate = (messages: Message[]): { date: string; messages: Message[] }[] => {
+    const groups: Record<string, Message[]> = {}
+
+    messages.forEach((message) => {
+      const date = new Date(message.created_at)
+      const dateStr = date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+
+      if (!groups[dateStr]) {
+        groups[dateStr] = []
+      }
+
+      groups[dateStr].push(message)
+    })
+
+    return Object.entries(groups).map(([date, messages]) => ({
+      date,
+      messages,
+    }))
+  }
+
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    if (!name) return "U"
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+  }
 
   // Handle send message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -233,12 +265,37 @@ export default function MessagesPage() {
     // Create temporary message ID
     const tempId = `temp-${Date.now()}`
 
+    // Find a receiver based on user role
+    const activeConversationData = conversations.find((conv) => conv.id === activeConversation)
+    let receiverId = ""
+
+    if (user.role === "customer") {
+      // If user is a customer, send to admin/team members
+      // Find the first non-customer participant (admin or team member)
+      const adminOrTeamMember = activeConversationData?.participants.find(
+        (p) => p.id !== user.id && p.role !== "customer",
+      )
+
+      // If no specific admin/team member found, use a default admin ID or project ID
+      receiverId = adminOrTeamMember?.id || activeConversation
+    } else {
+      // If user is admin or team member, send to the customer
+      const customer = activeConversationData?.participants.find((p) => p.role === "customer" || p.id !== user.id)
+      receiverId = customer?.id || activeConversationData?.participants[0]?.id || ""
+    }
+
+    // If still no receiver, use the project ID as a fallback
+    if (!receiverId) {
+      receiverId = activeConversation
+      console.log("Using project ID as receiver:", receiverId)
+    }
+
     // Add temporary message to UI
     const tempMessage: Message = {
       id: tempId,
       project_id: activeConversation,
       sender_id: user.id,
-      receiver_id: "", // Will be set by the server
+      receiver_id: receiverId,
       message: newMessage,
       created_at: new Date().toISOString(),
       isTemp: true,
@@ -250,10 +307,13 @@ export default function MessagesPage() {
       },
     }
 
-    // Add to messages
+    // Store the message text before clearing the input
+    const messageText = newMessage
+
+    // Add to messages for immediate display
     setMessages((prev) => [...prev, tempMessage])
 
-    // Clear input
+    // Clear input immediately for better UX
     setNewMessage("")
 
     // Scroll to bottom
@@ -261,12 +321,8 @@ export default function MessagesPage() {
 
     // Send message to server
     try {
-      // Find a receiver (first participant that's not the current user)
-      const activeConversationData = conversations.find((conv) => conv.id === activeConversation)
-      const receiver = activeConversationData?.participants.find((p) => p.id !== user.id)
-      const receiverId = receiver?.id || ""
-
-      const result = await sendMessageToServer(activeConversation, newMessage, user.id, receiverId)
+      console.log("Sending message to:", receiverId)
+      const result = await sendMessageToServer(activeConversation, messageText, user.id, receiverId)
 
       if (!result.success) {
         // Mark message as failed
@@ -277,6 +333,9 @@ export default function MessagesPage() {
           description: "Please try again",
           variant: "destructive",
         })
+      } else if (result.data) {
+        // Replace the temporary message with the real one
+        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...result.data, isTemp: false } : msg)))
       }
     } catch (error) {
       console.error("Error sending message:", error)
@@ -292,25 +351,12 @@ export default function MessagesPage() {
     }
   }
 
-  // Function to render message status indicators
-  const renderMessageStatus = (message: Message) => {
-    if (message.sendFailed) {
-      return <span className="text-xs text-red-500">Failed</span>
-    }
-
-    if (message.isTemp) {
-      return <Check className="h-3 w-3" />
-    }
-
-    return <CheckCheck className="h-3 w-3" />
-  }
-
   // Get active conversation data
   const activeConversationData = conversations.find((conv) => conv.id === activeConversation)
 
   if (!user) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-lg border bg-background">
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-lg border bg-background">
         <div className="text-center">
           <h2 className="text-xl font-medium">Please sign in</h2>
           <p className="text-muted-foreground">You need to be signed in to view messages</p>
@@ -319,9 +365,9 @@ export default function MessagesPage() {
     )
   }
 
-  if (isLoading) {
+  if (isLoading && !activeConversation) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-lg border bg-background">
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-lg border bg-background">
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="text-sm text-muted-foreground">Loading messages...</p>
@@ -331,7 +377,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] max-h-[800px] overflow-hidden rounded-lg border bg-background">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-lg border bg-background">
       {/* Conversation List */}
       {showConversationList && (
         <div className="w-full md:w-80 border-r flex flex-col h-full">
@@ -346,7 +392,7 @@ export default function MessagesPage() {
               />
             </div>
           </div>
-          <div className="flex-1 overflow-auto">
+          <ScrollArea className="flex-1">
             {filteredConversations.length > 0 ? (
               filteredConversations.map((conversation) => (
                 <div
@@ -355,7 +401,12 @@ export default function MessagesPage() {
                     "flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors",
                     activeConversation === conversation.id && "bg-muted",
                   )}
-                  onClick={() => setActiveConversation(conversation.id)}
+                  onClick={() => {
+                    setActiveConversation(conversation.id)
+                    if (isMobileView) {
+                      setShowConversationList(false)
+                    }
+                  }}
                 >
                   {conversation.is_group ? (
                     <div className="relative flex -space-x-2">
@@ -417,10 +468,6 @@ export default function MessagesPage() {
                           ""
                         )}
                         {conversation.last_message.content}
-                        {conversation.last_message.isTemp && <span className="text-xs italic ml-1">(sending...)</span>}
-                        {conversation.last_message.sendFailed && (
-                          <span className="text-xs text-red-500 italic ml-1">(failed)</span>
-                        )}
                       </p>
                     )}
                     {conversation.unread_count > 0 && (
@@ -434,7 +481,7 @@ export default function MessagesPage() {
             ) : (
               <div className="p-4 text-center text-muted-foreground">No conversations found</div>
             )}
-          </div>
+          </ScrollArea>
         </div>
       )}
 
@@ -442,7 +489,7 @@ export default function MessagesPage() {
       <div className="flex-1 flex flex-col h-full">
         {activeConversationData ? (
           <>
-            {/* Chat Header - Fixed */}
+            {/* Chat Header */}
             <div className="flex items-center justify-between p-4 border-b shrink-0">
               <div className="flex items-center gap-3">
                 {isMobileView && (
@@ -504,109 +551,162 @@ export default function MessagesPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Info className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Project Info</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>More</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
             </div>
 
-            {/* Messages - Using ScrollArea for proper scrolling */}
-            <ScrollArea className="flex-1 h-[calc(100%-8rem)]">
-              <div className="p-3">
-                {Object.entries(groupedMessages).length > 0 ? (
-                  Object.entries(groupedMessages).map(([date, dateMessages]) => (
-                    <div key={date} className="space-y-4">
-                      <div className="relative flex items-center py-2">
-                        <div className="flex-grow border-t"></div>
-                        <span className="mx-4 flex-shrink text-xs text-muted-foreground">
-                          {isToday(new Date(date))
-                            ? "Today"
-                            : isYesterday(new Date(date))
-                              ? "Yesterday"
-                              : format(new Date(date), "MMMM d, yyyy")}
-                        </span>
-                        <div className="flex-grow border-t"></div>
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-slate-900/50" id="messages-container">
+              {messages.length > 0 ? (
+                groupMessagesByDate(messages).map((group, groupIndex) => (
+                  <div key={group.date} className="space-y-3 mb-6">
+                    {/* Date header */}
+                    <div className="flex items-center justify-center my-4">
+                      <div className="bg-slate-200/70 dark:bg-slate-800/70 px-3 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {group.date}
                       </div>
-                      <div className="space-y-4">
-                        {dateMessages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={cn("flex", message.sender_id === user.id ? "justify-end" : "justify-start")}
-                          >
-                            <div
-                              className={cn(
-                                "max-w-[75%] rounded-lg px-4 py-2",
-                                message.sender_id === user.id ? "bg-primary text-primary-foreground" : "bg-muted",
-                                message.isTemp && "opacity-70",
-                                message.sendFailed && "border border-red-500",
-                              )}
-                            >
-                              {message.message}
-                              <div
-                                className={cn(
-                                  "mt-1 flex justify-end gap-1",
-                                  message.sender_id === user.id
-                                    ? "text-primary-foreground/70"
-                                    : "text-muted-foreground",
-                                )}
+                    </div>
+
+                    {/* Messages for this date */}
+                    {group.messages.map((message, index) => {
+                      const isCurrentUser = message.sender?.id === user?.id
+                      const isTemp = message.isTemp
+                      const showSender = index === 0 || group.messages[index - 1]?.sender?.id !== message.sender?.id
+
+                      return (
+                        <motion.div
+                          key={message.id || `${groupIndex}-${index}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.05 }}
+                          className={`flex gap-2 ${isCurrentUser ? "justify-end" : "justify-start"} ${
+                            !showSender && !isCurrentUser ? "pl-10" : ""
+                          } ${!showSender && isCurrentUser ? "pr-10" : ""} mb-3`}
+                        >
+                          {!isCurrentUser && showSender && (
+                            <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
+                              <AvatarImage
+                                src={message.sender?.profile_image || undefined}
+                                alt={message.sender?.user_name || "User"}
+                              />
+                              <AvatarFallback
+                                className={`text-xs ${
+                                  message.sender?.role === "admin" || message.sender?.role === "team_member"
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                }`}
                               >
-                                <span className="text-xs">{format(new Date(message.created_at), "h:mm a")}</span>
-                                {message.sender_id === user.id && renderMessageStatus(message)}
+                                {getInitials(message.sender?.user_name || "User")}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          {isCurrentUser && showSender && (
+                            <Avatar className="h-8 w-8 mt-1 flex-shrink-0 order-2 ml-2">
+                              <AvatarImage src={user?.profile_image || undefined} alt={user?.user_name || "You"} />
+                              <AvatarFallback className="bg-primary text-white text-xs">
+                                {getInitials(user?.user_name || "You")}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+
+                          <div className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"} max-w-[80%]`}>
+                            {showSender && !isCurrentUser && (
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-xs font-medium">{message.sender?.user_name || "User"}</p>
+                                {message.sender?.role && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                                  >
+                                    {message.sender.role === "admin"
+                                      ? "Admin"
+                                      : message.sender.role === "team_member"
+                                        ? "Team"
+                                        : "Client"}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+
+                            <div
+                              className={`rounded-lg px-3 py-2 ${
+                                isCurrentUser
+                                  ? `bg-primary text-white dark:bg-primary dark:text-white ${
+                                      isTemp ? "opacity-70" : ""
+                                    }`
+                                  : "bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700"
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                              <div className="flex items-center justify-end gap-1 mt-1">
+                                <p
+                                  className={`text-[10px] ${isCurrentUser ? "text-white/70" : "text-muted-foreground"}`}
+                                >
+                                  {new Date(message.created_at).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                                {isTemp && (
+                                  <span className="text-[10px] italic text-white/70">
+                                    {isCurrentUser ? "sending..." : ""}
+                                  </span>
+                                )}
+                                {message.sendFailed && (
+                                  <span className="text-[10px] text-red-300 italic">failed to send</span>
+                                )}
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center h-full py-10">
-                    <div className="text-center">
-                      <p className="text-muted-foreground">No messages yet</p>
-                      <p className="text-sm text-muted-foreground">Start the conversation by sending a message</p>
-                    </div>
+                        </motion.div>
+                      )
+                    })}
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                  <div className="rounded-full bg-primary/5 p-3 mb-3">
+                    <MessageSquare className="h-6 w-6 text-primary/70" />
+                  </div>
+                  <h3 className="text-base font-medium mb-1">No messages yet</h3>
+                  <p className="text-muted-foreground text-sm max-w-md mb-4">
+                    Start the conversation with your team or client to discuss project details.
+                  </p>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </ScrollArea>
 
-            {/* Message Input - Fixed */}
-            <div className="border-t p-2 shrink-0">
+            {/* Message Input */}
+            <div className="border-t bg-white dark:bg-slate-900 p-3">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <Button type="button" variant="ghost" size="icon">
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Input
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1"
-                />
-                <Button type="button" variant="ghost" size="icon">
-                  <Smile className="h-5 w-5" />
-                </Button>
-                <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                  <Send className="h-5 w-5" />
-                </Button>
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarImage src={user?.profile_image || undefined} alt={user?.user_name || "You"} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    {getInitials(user?.user_name || "You")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 pr-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary/30 text-sm"
+                    placeholder="Type your message here..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        if (newMessage.trim()) handleSendMessage(e)
+                      }
+                    }}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!newMessage.trim()}
+                    className="h-7 w-7 absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90 text-white"
+                  >
+                    <Send className="h-4 w-4 rotate-45" />
+                  </Button>
+                </div>
               </form>
             </div>
           </>

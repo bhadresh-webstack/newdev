@@ -8,15 +8,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Message } from "@/lib/types"
+import type { Message } from "@/lib/types"
 
-
+// Update the ProjectMessagesTab component props to include the project and user role
 interface ProjectMessagesTabProps {
   messages: Message[]
   newMessage: string
   setNewMessage: (message: string) => void
   sendMessage: () => void
   user: any
+  project?: any // Add project prop
 }
 
 export function ProjectMessagesTab({
@@ -25,6 +26,7 @@ export function ProjectMessagesTab({
   setNewMessage,
   sendMessage,
   user,
+  project,
 }: ProjectMessagesTabProps) {
   // Get initials for avatar
   const getInitials = (name: string) => {

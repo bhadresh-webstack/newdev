@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Circle, ArrowUpRight } from "lucide-react"
 import type { Task } from "@/lib/stores/tasks-store"
+import { JSX } from "react"
 
 interface TaskRelatedTabProps {
   relatedTasks: Task[]

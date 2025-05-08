@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Calendar, Circle } from "lucide-react"
 import type { Task } from "@/lib/stores/tasks-store"
+import { JSX } from "react"
 
 interface TaskSidebarProps {
   task: Task

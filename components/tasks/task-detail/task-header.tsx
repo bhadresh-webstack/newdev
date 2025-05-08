@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ArrowUpRight, Circle, CheckCircle, Clock, Edit, MoreHorizontal, Trash2, User } from "lucide-react"
 import type { Task } from "@/lib/stores/tasks-store"
+import { JSX } from "react"
 
 interface TaskHeaderProps {
   task: Task

@@ -58,6 +58,7 @@
   }
 }
 
+
 @keyframes gradient-slow {
   0% {
     background-position: 0% 50%;
@@ -91,4 +92,3 @@
   background-size: 200% 200%;
   animation: gradient-dark 15s ease infinite;
 }
-

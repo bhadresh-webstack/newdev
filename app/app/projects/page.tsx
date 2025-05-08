@@ -16,7 +16,7 @@ import { ProjectFilters } from "@/components/projects/project-filters"
 import { ProjectCard } from "@/components/projects/project-card"
 import { EmptyProjects } from "@/components/projects/empty-projects"
 import { ProjectLoadingSkeleton } from "@/components/projects/project-loading-skeleton"
-import type { Project } from "@/lib/stores/projects-store"
+import { Project } from "@/lib/types"
 
 // Animation variants
 const staggerContainer = {

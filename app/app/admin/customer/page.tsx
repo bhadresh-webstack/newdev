@@ -186,7 +186,7 @@ const customerActivities = [
 export default function CustomerManagementPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false)
   const [newCustomer, setNewCustomer] = useState({
@@ -214,13 +214,31 @@ export default function CustomerManagementPage() {
   })
 
   // Handle view details click
-  const handleViewDetails = (customer) => {
+  interface Customer {
+    id: string
+    name: string
+    email: string
+    phone: string
+    company: string
+    status: string
+    projects: number
+    totalSpent: string
+    lastActive: string
+    avatar: string
+    address: string
+    joinDate: string
+    notes: string
+    paymentMethod: string
+    projectNames: string[]
+  }
+
+  const handleViewDetails = (customer: Customer) => {
     setSelectedCustomer(customer)
     setIsDetailsOpen(true)
   }
 
   // Handle input change for new customer form
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target
     setNewCustomer((prev) => ({
       ...prev,
@@ -229,7 +247,7 @@ export default function CustomerManagementPage() {
   }
 
   // Handle select change for new customer form
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: keyof typeof newCustomer, value: string): void => {
     setNewCustomer((prev) => ({
       ...prev,
       [name]: value,
@@ -237,11 +255,32 @@ export default function CustomerManagementPage() {
   }
 
   // Handle add customer form submission
-  const handleAddCustomer = (e) => {
+  interface NewCustomer {
+    name: string
+    email: string
+    phone: string
+    company: string
+    address: string
+    status: string
+    notes: string
+    paymentMethod: string
+  }
+
+  interface CustomerObj extends NewCustomer {
+    id: string
+    projects: number
+    totalSpent: string
+    lastActive: string
+    avatar: string
+    joinDate: string
+    projectNames: string[]
+  }
+
+  const handleAddCustomer = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault()
 
     // Create new customer object
-    const newCustomerObj = {
+    const newCustomerObj: CustomerObj = {
       id: `c${customersList.length + 1}`.padStart(4, "0"),
       ...newCustomer,
       projects: 0,

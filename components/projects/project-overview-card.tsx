@@ -6,7 +6,7 @@ import { CheckCircle, Clock, FolderKanban } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils/project-utils"
-import type { Project } from "@/lib/stores/projects-store"
+import { Project } from "@/lib/types"
 
 interface ProjectOverviewCardProps {
   project: Project

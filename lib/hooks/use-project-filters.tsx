@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { Project } from "@/lib/stores/projects-store"
+import { Project } from "../types"
 
 export function useProjectFilters() {
   const [searchQuery, setSearchQuery] = useState("")

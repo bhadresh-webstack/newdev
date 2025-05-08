@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 
 import { useState, useEffect, useRef } from "react"
-import type { Message, TeamMember } from "@/lib/types"
+import type { Message, Project, TeamMember } from "@/lib/types"
 // First, let's add a proper type definition for the task creation data
 // Add this after the existing imports
 import type { CreateTaskData } from "@/lib/types"
@@ -11,7 +11,7 @@ import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useProjectsStore, type Project } from "@/lib/stores/projects-store"
+import { useProjectsStore } from "@/lib/stores/projects-store"
 import { useTasksStore } from "@/lib/stores/tasks-store"
 import { useAuthStore } from "@/lib/stores/auth-store"
 import type { Task as TaskType } from "@/lib/stores/tasks-store"

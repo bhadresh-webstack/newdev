@@ -3,46 +3,48 @@
 import { create } from "zustand"
 import { apiRequest } from "@/lib/useApi"
 import { ENDPOINT } from "../api/end-point"
+import { Project } from "../types"
 
-export type Project = {
-  id: string
-  title: string
-  description: string
-  status: string
-  customer_id: string
-  customer_name?: string
-  pricing_tier: string
-  created_at: string
-  updated_at?: string
-  progress_percentage?: number
-  total_tasks?: number
-  completed_tasks?: number
-  technical_requirements?: string
-  required_skills?: string
-  deliverables?: string
-  budget?: number
-  payment_type?: string
-  start_date?: string
-  duration_days?: number
-  priority?: string
-  visibility?: string
-  category?: string
-  customer?: {
-    id: string
-    user_name: string
-    email: string
-    profile_image: string | null
-  }
-  tasks?: any[]
-  feedbacks?: any[]
-  files?: any[]
-  _count?: {
-    tasks: number
-  }
-  // Add these properties for team member relationship
-  isTeamMember?: boolean
-  hasAssignedTasks?: boolean
-}
+
+// export type Project = {
+//   id: string
+//   title: string
+//   description: string
+//   status: string
+//   customer_id: string
+//   customer_name?: string
+//   pricing_tier: string
+//   created_at: string
+//   updated_at?: string
+//   progress_percentage?: number
+//   total_tasks?: number
+//   completed_tasks?: number
+//   technical_requirements?: string
+//   required_skills?: string
+//   deliverables?: string
+//   budget?: number
+//   payment_type?: string
+//   start_date?: string
+//   duration_days?: number
+//   priority?: string
+//   visibility?: string
+//   category?: string
+//   customer?: {
+//     id: string
+//     user_name: string
+//     email: string
+//     profile_image: string | null
+//   }
+//   tasks?: any[]
+//   feedbacks?: any[]
+//   files?: any[]
+//   _count?: {
+//     tasks: number
+//   }
+//   // Add these properties for team member relationship
+//   isTeamMember?: boolean
+//   hasAssignedTasks?: boolean
+// }
 
 export type ProjectStats = {
   totalProjects: number

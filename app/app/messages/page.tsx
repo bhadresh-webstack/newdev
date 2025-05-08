@@ -273,14 +273,14 @@ export default function MessagesPage() {
       // If user is a customer, send to admin/team members
       // Find the first non-customer participant (admin or team member)
       const adminOrTeamMember = activeConversationData?.participants.find(
-        (p) => p.id !== user.id && p.role !== "customer",
+        (p:any) => p.id !== user.id && p.role !== "customer",
       )
 
       // If no specific admin/team member found, use a default admin ID or project ID
       receiverId = adminOrTeamMember?.id || activeConversation
     } else {
       // If user is admin or team member, send to the customer
-      const customer = activeConversationData?.participants.find((p) => p.role === "customer" || p.id !== user.id)
+      const customer = activeConversationData?.participants.find((p:any) => p.role === "customer" || p.id !== user.id)
       receiverId = customer?.id || activeConversationData?.participants[0]?.id || ""
     }
 

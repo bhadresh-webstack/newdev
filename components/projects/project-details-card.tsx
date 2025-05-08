@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils/project-utils"
-import type { Project } from "@/lib/stores/projects-store"
+import { Project } from "@/lib/types"
 
 interface ProjectDetailsCardProps {
   project: Project

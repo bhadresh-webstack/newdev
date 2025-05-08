@@ -54,7 +54,7 @@ export function RecentProjects({ projects, userRole }: RecentProjectsProps) {
             .map((project) => {
               const transformedProject = {
                 ...project,
-                updated_at: project.updated_at ?? undefined,
+                updated_at: project.updated_at ?? null,
               };
               return (
                 <ProjectCard

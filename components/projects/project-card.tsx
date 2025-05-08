@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useAuthStore } from "@/lib/stores/auth-store"
-import type { Project } from "@/lib/stores/projects-store"
+import { Project } from "@/lib/types"
 
 interface ProjectCardProps {
   project: Project

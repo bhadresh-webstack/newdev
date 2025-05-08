@@ -66,4 +66,4 @@ jobs:
           app-name: 'TheWebStack'
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9CBBEA4C8DC24BF78B5E36D197A826DE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BF3A4E6756D9415397989F0DF67A5600 }}

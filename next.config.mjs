@@ -17,6 +17,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Add output: 'standalone' for Azure deployment
+  output: 'standalone',
+  // Keep your experimental features
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,

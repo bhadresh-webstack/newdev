@@ -1,0 +1,48 @@
+{
+  "version": 3,
+  "middleware": {
+    "/": {
+      "files": [
+        "server/edge-runtime-webpack.js",
+        "server/middleware.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/(\\/?index|\\/?index\\.json))?[\\/#\\?]?$",
+          "originalSource": "/"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/login(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/login"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/signup(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/signup"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/app(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/app/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/reset-password(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/reset-password"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "vz7FqomQin_ccjIoXbrMa",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "3u0CyJQZYnf2KHT8jDQr6QwiRLwvbCCUrVbOAclDsys=",
+        "__NEXT_PREVIEW_MODE_ID": "8f7c648361a3f7018357a759d2c38997",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "7c774359ba951bea196e3427a5717f1ac3bea122ffc6df41cd80d7e881f28da1",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "901121a5fc4eded756f9e7c9524b22fc0505554e4c6f4f836eb041b253b5f5f2"
+      }
+    }
+  },
+  "functions": {},
+  "sortedMiddleware": [
+    "/"
+  ]
+}

@@ -1,0 +1,1 @@
+(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[1449],{23865:(e,s,t)=>{Promise.resolve().then(t.bind(t,48230))},48230:(e,s,t)=>{"use strict";t.r(s),t.d(s,{default:()=>l});var a=t(95155);t(12115);let l=()=>(0,a.jsx)("div",{className:" text-center font-black text-5xl",children:"AnalyticsPage"})}},e=>{var s=s=>e(e.s=s);e.O(0,[8441,1684,7358],()=>s(23865)),_N_E=e.O()}]);
